@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const WEB = path.join(ROOT, 'apps/desktop/src/renderer');
+const MONACO = path.join(ROOT, 'dist/monaco');
 const DATA = process.env.CODEMESH_DATA_DIR || path.join(os.homedir(), '.codemesh');
 fs.mkdirSync(DATA, { recursive: true });
 const db = new DatabaseSync(path.join(DATA, 'codemesh.db'));
@@ -89,9 +90,12 @@ const server = http.createServer(async (req,res) => {
       if(url.pathname==='/api/submissions' && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); const rows=db.prepare('SELECT submissions.id,student_id,name,roll,exercise_title,submitted_at FROM submissions JOIN join_requests ON join_requests.id=submissions.student_id WHERE join_requests.session_id=? ORDER BY submitted_at DESC').all(s.id); return send(res,200,{submissions:rows}); }
       return send(res,404,{error:'API route not found'});
     }
-    const requested=url.pathname==='/'?'index.html':url.pathname.replace(/^\//,''); const target=path.resolve(WEB,requested); if(!target.startsWith(WEB+path.sep)&&target!==WEB) return send(res,403,{error:'Forbidden'});
+    const isMonaco=url.pathname.startsWith('/monaco/');
+    const staticRoot=isMonaco?MONACO:WEB;
+    let requested=isMonaco?decodeURIComponent(url.pathname.slice('/monaco/'.length)):(url.pathname==='/'?'index.html':url.pathname.replace(/^\//,''));
+    const target=path.resolve(staticRoot,requested); if(!target.startsWith(staticRoot+path.sep)&&target!==staticRoot) return send(res,403,{error:'Forbidden'});
     if(!fs.existsSync(target)||!fs.statSync(target).isFile()) return send(res,404,{error:'Not found'});
-    const ext=path.extname(target); const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.wasm':'application/wasm','.zip':'application/zip','.svg':'image/svg+xml'}; res.writeHead(200,{'content-type':types[ext]||'application/octet-stream'}); fs.createReadStream(target).pipe(res);
+    const ext=path.extname(target); const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.wasm':'application/wasm','.zip':'application/zip','.svg':'image/svg+xml','.ttf':'font/ttf','.woff':'font/woff','.woff2':'font/woff2'}; res.writeHead(200,{'content-type':types[ext]||'application/octet-stream'}); fs.createReadStream(target).pipe(res);
   } catch(e) { send(res,e.status||400,{error:e.message||'Unexpected server error'}); }
 });
 const port=Number(process.env.CODEMESH_PORT||4173); server.listen(port,'0.0.0.0',()=>{console.log(`CodeMesh host listening on http://localhost:${port}`); for(const a of networkAddresses()) console.log(`LAN: http://${a.address}:${port} (${a.interface})`);});
