@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.log
+*.db
+*.db-shm
+*.db-wal
+apps/desktop/src/renderer/pyodide/*
+!apps/desktop/src/renderer/pyodide/.gitkeep
+release/
+dist/
