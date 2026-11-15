@@ -1,21 +1,25 @@
-# Integration status
+# CodeMesh integration status — v0.2
 
-## Implemented in MVP
+## Implemented in this source package
+- Teacher/student classroom flow carried forward from v0.1.
+- Electron main-process IPC bridge for desktop-only native code execution.
+- Native Python 3 execution through the student's installed interpreter.
+- Native Java execution through the student's installed JDK (`javac` + `java`).
+- Integrated terminal output for stdout, stderr, compile failures and exit status.
+- Execution input validation, workspace path checks, temporary staging, 8-second timeout and 256 KB output cap.
+- Browser clients do not receive the Electron native-execution bridge; browser execution remains a separate runtime path.
 
-- Kalash scope: local host, SQLite, join-code/admission/token flow, LAN address discovery, role-scoped routes, workspace persistence, lock/disconnect/session lifecycle, exercise and submission APIs.
-- Ishita scope: teacher dashboard, classroom creation, joining code, admission approve/reject, participant monitor, read-only workspace view, exercise publishing, lock/unlock, disconnect, submissions.
-- Kalyani scope: student join/waiting flow, individual workspace/file creation, autosave/recovery cache, lock handling, submission, Pyodide worker adapter.
+## Verified in the build environment
+- `npm test`: 7 tests passed.
+- `npm run check`: passed.
+- Native Python smoke test: passed (`Hello from CodeMesh Python!`).
+- Native Java smoke test using OpenJDK 21: passed (`Hello from CodeMesh Java!`).
 
-## Deliberately incomplete
+## Not yet verified / remaining
+- Electron GUI launch and Windows installer packaging.
+- Actual two-laptop LAN classroom run using the v0.2 desktop build.
+- Windows-specific Python launcher and JDK discovery on the target student laptops.
+- TLS/certificate pairing, OS-level sandboxing and 30-client load test.
+- Monaco, React/TypeScript migration, WebSocket replacement for SSE, and browser TeaVM integration.
 
-- React + TypeScript migration and shared typed contracts.
-- Monaco Editor integration.
-- Authenticated WebSocket gateway and Yjs sync.
-- Offline Pyodide runtime download/package step must be run separately.
-- Java TeaVM compiler/runtime bridge.
-- TLS/certificate pairing, audit trail, advanced rate limiting, and formal security review.
-- 30-client load test and real classroom router test.
-
-## Validation
-
-A local HTTP integration smoke test has been run for session creation, join request, approval, one-time token retrieval, workspace fetch/save, submission, and submission listing. Syntax checks have also been run. Real LAN multi-device and Electron package tests remain outstanding.
+Do not describe this build as production-secure or 30-client validated.

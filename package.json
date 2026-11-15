@@ -1,15 +1,17 @@
 {
   "name": "codemesh-classroom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Local-first programming classroom platform",
+  "description": "Local-first programming classroom with native desktop execution",
   "type": "module",
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "start": "node apps/desktop/src/main/server.mjs",
     "dev": "node apps/desktop/src/main/server.mjs",
     "desktop": "electron apps/desktop/src/main/electron.cjs",
-    "check": "node --check apps/desktop/src/main/server.mjs && node --check apps/desktop/src/main/electron.cjs && node --check apps/desktop/src/preload/index.cjs && node --check apps/desktop/src/renderer/app.js && node --check apps/desktop/src/renderer/workers/python.worker.js",
+    "check": "node --check apps/desktop/src/main/server.mjs && node --check apps/desktop/src/main/electron.cjs && node --check apps/desktop/src/main/native-runner.cjs && node --check apps/desktop/src/preload/index.cjs && node --check apps/desktop/src/renderer/app.js && node --check apps/desktop/src/renderer/workers/python.worker.js",
     "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {

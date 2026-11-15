@@ -1,7 +1,18 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { runNativeCode } = require('./native-runner.cjs');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const http = require('node:http');
+ipcMain.handle('codemesh:run-native-code', async (event, input) => {
+  try {
+    const senderUrl = event.senderFrame?.url || '';
+    if (!senderUrl.startsWith(`http://127.0.0.1:${port}/`) && !senderUrl.startsWith(`http://localhost:${port}/`)) throw new Error('Execution request rejected: untrusted renderer.');
+    if (!input || typeof input !== 'object') throw new Error('Invalid execution request.');
+    return await runNativeCode(input);
+  } catch (error) {
+    return { ok: false, stdout: '', stderr: error.message || 'Execution failed.', exitCode: -1 };
+  }
+});
 let hostProcess;
 let windowRef;
 const root = path.resolve(__dirname, '../../../..');

@@ -1,95 +1,107 @@
-# CodeMesh — Local-first Programming Classroom
+# CodeMesh — MVP v0.2 (Desktop Native Execution)
 
-A first runnable MVP based on the supplied architecture and the Kalash / Ishita / Kalyani development briefs.
+CodeMesh is a local-first programming classroom prototype. This version adds a **desktop-only native execution path** while preserving the browser prototype's offline WebAssembly path.
 
-## What works in this build
+## Execution modes (intentional architecture split)
+
+| Mode | Python | Java |
+|---|---|---|
+| Browser version | Pyodide (local assets) | TeaVM (separate browser-runtime integration; not yet wired in this MVP) |
+| Electron desktop version | Installed local Python 3 | Installed local JDK (`javac` + `java`) |
+
+The desktop Run button invokes local interpreters/compilers and displays stdout, stderr, compilation errors and exit status in the integrated output panel. It does **not** use Pyodide or TeaVM.
+
+### Desktop execution details
+
+- Python: `py -3 -u file.py` on Windows when the Python launcher exists; otherwise `python` / `python3`.
+- Java: compiles all `.java` files in the workspace with `javac`, then runs the active source file's main class.
+- The Electron main process accepts only a narrow IPC request from its own loopback renderer. It delegates to `native-runner.cjs`, which stages workspace files in a temporary directory and spawns allowlisted executable names with `shell: false`.
+- Execution has an 8-second timeout, a 256 KB combined output cap, file-count/size limits, path traversal checks and temporary-directory cleanup.
+- Java package declarations are supported for a simple active main class. Complex multi-module/build-tool projects are outside this MVP.
+
+**Important:** Native execution runs arbitrary code with the operating-system permissions of the logged-in student. The timeout and file staging are guardrails, not a true sandbox. Do not use untrusted code or deploy this as a secure exam environment without OS-level isolation (for example, a properly configured container/VM or restricted OS account).
+
+## Features carried over from v0.1
 
 - Teacher creates and ends a classroom session.
-- Host generates a cryptographically random 12-character join code.
-- Student submits name, roll number and code; teacher approves or rejects.
-- Admission is required before a student receives a scoped session token.
-- Approved student receives an individual workspace.
-- Student files autosave to the host and are cached in browser local storage for recovery.
-- Teacher can inspect the latest synced workspace, publish an exercise/starter file, lock/unlock all editors, disconnect a student and review submissions.
-- Server events update the teacher and student screens in real time using Server-Sent Events (SSE).
-- SQLite persistence uses Node 22's built-in `node:sqlite` module.
-- Python execution runs in a browser Web Worker through Pyodide once the offline runtime assets have been downloaded.
-- A secure Electron BrowserWindow shell is scaffolded.
-
-## Important MVP limitations
-
-This is a demonstrable vertical slice, not the finished production system described in the architecture.
-
-- The current UI is dependency-free HTML/CSS/JavaScript, not yet React + TypeScript.
-- The editor is a code textarea, not Monaco Editor yet.
-- Live events use SSE, not the specified WebSocket gateway.
-- Python works only after Pyodide assets are installed locally. Java/TeaVM execution is not implemented in this build.
-- Electron desktop shell requires installing Electron; the no-dependency LAN host can run directly under Node.js.
-- LAN HTTP is unencrypted. The teacher control endpoints are restricted to loopback, but production classroom deployment still needs HTTPS/certificate pairing, stronger rate limiting, audit logging, and security review.
-- Student local recovery is a browser-local draft cache; conflict-aware merge/recovery is not yet implemented.
-- No claim of 30-client readiness is made. Run load tests on the actual router and teacher laptop before classroom deployment.
+- Host generates a cryptographically random joining code.
+- Students request admission; teacher approves/rejects.
+- Approved students receive an individual workspace.
+- Workspace changes save to the host; local draft recovery is available.
+- Teacher can monitor student work, publish exercises/starter code, lock editors, disconnect students and review submissions.
+- SQLite persistence and real-time server events (SSE).
+- LAN classroom operation without internet for core classroom coordination.
 
 ## Requirements
 
-- Node.js 22.13+ (Node 22 with built-in `node:sqlite`).
-- Windows, macOS or Linux.
+- Node.js 22.13+ (the host uses Node's built-in `node:sqlite`).
+- For the desktop app: npm and Electron dependencies.
+- For native Python: Python 3 installed and discoverable through PATH (Windows Python Launcher `py -3` is supported).
+- For native Java: a JDK installed with both `javac` and `java` on PATH.
+- Windows is the primary target for the current desktop execution flow. Linux/macOS may work if Node, Python and JDK are correctly installed.
 
-## Run the host (no npm install required)
+## Run the LAN host in a browser
 
 ```bash
 npm start
 ```
 
-Open `http://localhost:4173` on the teacher laptop. The terminal prints the LAN address, for example `http://192.168.50.10:4173`. Students connect to that address from the same Wi-Fi/LAN.
+Open `http://localhost:4173` on the teacher laptop. Students on the same Wi-Fi/LAN open the displayed host address. Browser clients continue to use the browser execution path (offline Python requires local Pyodide assets).
 
-Keep the teacher dashboard open on `localhost`; teacher-only API routes reject requests coming from other LAN devices.
-
-Data is stored in `~/.codemesh/codemesh.db` (Windows: the user's home directory `.codemesh` folder).
-
-## Enable offline Python execution
-
-Run this once while internet is available, before the classroom session:
-
-PowerShell:
-
-```powershell
-.\scripts\setup-pyodide.ps1
-```
-
-macOS/Linux:
+## Run the Electron desktop app
 
 ```bash
-./scripts/setup-pyodide.sh
+npm install
+npm run desktop
 ```
 
-The script downloads Pyodide 0.29.4 into `apps/desktop/src/renderer/pyodide`. Once present, Python programs execute in a Web Worker on the student's computer. Runtime assets are served locally; classroom execution does not fetch them from a CDN.
+Electron starts the local host server and opens the desktop interface. Use the role switch to select Teacher or Student. A student can enter the teacher's LAN host URL and join the session. On that student's Electron desktop app, the Run button uses that student's installed Python/JDK.
 
-Example:
+The Electron desktop app also starts a local host service on each machine so the same UI can be served locally. For a student joining another teacher's host, use the teacher's displayed LAN address in the Join Classroom form.
 
-```python
-name = "CodeMesh"
-print(f"Hello from {name}!")
-```
+## Test and inspect
 
-Expected output: `Hello from CodeMesh!`
-
-Java/TeaVM is not yet wired into this build; the UI deliberately does not pretend that Java execution is available.
-
-## Electron shell (optional)
-
-The Electron entry point and hardened preload are in `apps/desktop/src/main/electron.cjs` and `apps/desktop/src/preload/index.cjs`. Install Electron in the project and launch that entry point to run the desktop wrapper. The host server remains a separate Node child process.
-
-## Tests
+The native runner was smoke-tested in the build environment with Python 3.13 and OpenJDK 21: both printed the expected CodeMesh greeting. This verifies the runner path, not the Electron GUI or your particular Windows installation.
 
 ```bash
 npm test
 npm run check
 ```
 
-## Network notes
+## Browser offline Python assets
 
-- Teacher laptop should preferably connect to the router using Ethernet.
-- Student laptops connect to the same Wi-Fi SSID.
+The browser-only version can download Pyodide assets before a classroom session:
+
+PowerShell:
+```powershell
+.\scripts\setup-pyodide.ps1
+```
+
+macOS/Linux:
+```bash
+./scripts/setup-pyodide.sh
+```
+
+The Electron desktop Run button does not use these assets.
+
+## Known limitations / next work
+
+- UI remains dependency-free HTML/CSS/JavaScript; React + TypeScript migration and Monaco integration are not yet complete.
+- Editor is a textarea, not Monaco.
+- Events use SSE rather than the originally proposed WebSocket gateway.
+- Browser Java/TeaVM runtime is not wired in this build.
+- TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers and 30-client load testing remain outstanding.
+- Electron packaging/Windows installer has not yet been built or tested.
+- Native Python/JDK installation checks happen at Run time; there is no guided installer yet.
+- Java support currently targets straightforward source files with a main class, not arbitrary Maven/Gradle projects, JNI, GUI apps or every JDK feature.
+
+## Network setup
+
+- Teacher laptop preferably connects to the router using Ethernet.
+- Student laptops connect to the same Wi-Fi/LAN.
 - Disable AP/client isolation if it blocks LAN-to-host traffic.
-- Use a dedicated classroom network and strong Wi-Fi password.
-- This MVP's LAN HTTP traffic is not encrypted; use only on a controlled test network until TLS/certificate trust is implemented.
+- This MVP uses unencrypted HTTP on the LAN. Use only on a controlled development network until TLS/certificate trust is implemented.
+
+## Data
+
+Classroom data is stored in `~/.codemesh/codemesh.db` (Windows: the user's home directory `.codemesh` folder). Native execution staging directories are temporary and removed after each run.
