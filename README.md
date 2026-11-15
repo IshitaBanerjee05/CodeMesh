@@ -1,6 +1,8 @@
-# CodeMesh — MVP v0.2 (Desktop Native Execution)
+# CodeMesh — MVP v0.3 (Monaco IDE)
 
-CodeMesh is a local-first programming classroom prototype. This version adds a **desktop-only native execution path** while preserving the browser prototype's offline WebAssembly path.
+CodeMesh is a local-first programming classroom prototype. v0.3 replaces the student code textarea with Monaco Editor while preserving the existing classroom server, workspace APIs, save flow and v0.2 desktop-native execution path.
+
+Monaco 0.57.0 is pinned as a runtime dependency and bundled locally with esbuild. The host serves its editor, language and worker assets from the ignored build directory; the app does not load Monaco from a CDN. `npm start`, `npm run desktop`, `npm test` and `npm run check` build those assets automatically. After dependencies have been installed, editing works without an internet connection.
 
 ## Execution modes (intentional architecture split)
 
@@ -36,6 +38,7 @@ The desktop Run button invokes local interpreters/compilers and displays stdout,
 
 - Node.js 22.13+ (the host uses Node's built-in `node:sqlite`).
 - For the desktop app: npm and Electron dependencies.
+- For the editor: the pinned Monaco package installed by `npm install`.
 - For native Python: Python 3 installed and discoverable through PATH (Windows Python Launcher `py -3` is supported).
 - For native Java: a JDK installed with both `javac` and `java` on PATH.
 - Windows is the primary target for the current desktop execution flow. Linux/macOS may work if Node, Python and JDK are correctly installed.
@@ -55,7 +58,7 @@ npm install
 npm run desktop
 ```
 
-Electron starts the local host server and opens the desktop interface. Use the role switch to select Teacher or Student. A student can enter the teacher's LAN host URL and join the session. On that student's Electron desktop app, the Run button uses that student's installed Python/JDK.
+Electron starts the local host server and opens the desktop interface. Use the role switch to select Teacher or Student. A student can enter the teacher's LAN host URL and join the session. Student workspaces use Monaco with Python/Java syntax highlighting based on file extension, local autosave, line numbers, indentation, bracket matching and automatic resize layout. On that student's Electron desktop app, the Run button continues to use that student's installed Python/JDK.
 
 The Electron desktop app also starts a local host service on each machine so the same UI can be served locally. For a student joining another teacher's host, use the teacher's displayed LAN address in the Join Classroom form.
 
@@ -86,8 +89,8 @@ The Electron desktop Run button does not use these assets.
 
 ## Known limitations / next work
 
-- UI remains dependency-free HTML/CSS/JavaScript; React + TypeScript migration and Monaco integration are not yet complete.
-- Editor is a textarea, not Monaco.
+- The UI remains vanilla HTML/CSS/JavaScript; React + TypeScript migration is not yet complete.
+- Monaco uses a small ESM bundle while the rest of the renderer remains unbundled. The build is a stepping stone toward the planned v0.4 renderer migration.
 - Events use SSE rather than the originally proposed WebSocket gateway.
 - Browser Java/TeaVM runtime is not wired in this build.
 - TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers and 30-client load testing remain outstanding.

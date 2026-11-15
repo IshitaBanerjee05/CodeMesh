@@ -1,25 +1,28 @@
-# CodeMesh integration status — v0.2
+# CodeMesh integration status — v0.3
 
-## Implemented in this source package
-- Teacher/student classroom flow carried forward from v0.1.
-- Electron main-process IPC bridge for desktop-only native code execution.
-- Native Python 3 execution through the student's installed interpreter.
-- Native Java execution through the student's installed JDK (`javac` + `java`).
-- Integrated terminal output for stdout, stderr, compile failures and exit status.
-- Execution input validation, workspace path checks, temporary staging, 8-second timeout and 256 KB output cap.
-- Browser clients do not receive the Electron native-execution bridge; browser execution remains a separate runtime path.
+## Implemented
+- Teacher/student classroom flow, SQLite persistence and SSE updates carried forward from v0.1/v0.2.
+- Electron-only native Python and Java execution through the existing narrow preload IPC bridge and native runner.
+- Monaco Editor 0.57.0 pinned as a runtime dependency and bundled locally with pinned esbuild 0.27.7.
+- The host serves generated Monaco JavaScript, CSS and worker files from the ignored `dist/monaco` directory under `/monaco/`; runtime assets are same-origin and require no CDN.
+- Student workspace uses Monaco with Python/Java syntax modes selected from file extensions, line numbers, four-space indentation, word wrap, bracket matching and automatic layout.
+- Editor changes continue to update local drafts, autosave to the host and use the existing workspace API and native Run path.
+- Teacher lock events make Monaco read-only and disable file editing controls; the server continues to reject locked workspace writes.
+- Monaco asset route rejects paths outside the build directory and serves editor/worker assets from the same origin.
 
-## Verified in the build environment
-- `npm test`: 7 tests passed.
-- `npm run check`: passed.
-- Native Python smoke test: passed (`Hello from CodeMesh Python!`).
-- Native Java smoke test using OpenJDK 21: passed (`Hello from CodeMesh Java!`).
+## Verified in this environment
+- v0.2 baseline before changes: `npm run check` passed and `npm test` passed (7 tests).
+- Monaco dependency installed from npm at the pinned version.
 
-## Not yet verified / remaining
-- Electron GUI launch and Windows installer packaging.
-- Actual two-laptop LAN classroom run using the v0.2 desktop build.
-- Windows-specific Python launcher and JDK discovery on the target student laptops.
-- TLS/certificate pairing, OS-level sandboxing and 30-client load test.
-- Monaco, React/TypeScript migration, WebSocket replacement for SSE, and browser TeaVM integration.
+## Verification and manual checks
+- `npm run check` passed after the implementation.
+- `npm test` passed: 9 tests, including Monaco language mapping, local asset serving and traversal rejection.
+- Desktop smoke check confirmed the Electron app launches and the teacher dashboard renders from the local app server.
+- Full student workspace checks for Python/Java highlighting, resize behavior, autosave, native Run and locked editing remain to be exercised interactively.
+- Two-device LAN and internet-disconnected classroom checks remain outstanding.
 
-Do not describe this build as production-secure or 30-client validated.
+## Known limitations
+- Only the Monaco entry and worker are bundled; the rest of the renderer remains vanilla JavaScript and HTML.
+- Monaco provides syntax highlighting here, not language-server diagnostics, completion or debugger features.
+- Native code execution still runs with the logged-in OS user's permissions; process timeouts and temporary staging are not a security sandbox.
+- TLS/certificate pairing, OS-level execution isolation and approximately 30-client load testing are not complete.
