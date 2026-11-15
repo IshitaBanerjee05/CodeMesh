@@ -1,0 +1,15 @@
+#code-editor.editor {
+  width: 100%;
+  height: min(62vh, 640px);
+  min-height: 320px;
+  padding: 0;
+  border: 0;
+  resize: none;
+}
+
+@media (max-width: 650px) {
+  #code-editor.editor {
+    height: 52vh;
+    min-height: 260px;
+  }
+}
