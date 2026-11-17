@@ -51,14 +51,25 @@ export interface NativeExecutionResult {
 }
 
 export interface ClassroomEventMap {
-  join_request: StudentParticipant;
-  admission_updated: StudentParticipant;
-  workspace_updated: { participantId: string; updatedAt: string };
-  submission_received: Submission;
+  session_updated: { session: ClassroomSession };
+  join_request: { request: StudentParticipant & { requested_at: string } };
+  admission_updated: { request: StudentParticipant & { requested_at: string } };
+  workspace_updated: { studentId: string; name: string; updatedAt: string };
+  submission_received: { id: string; studentId: string; name: string };
   exercise_published: { exercise: Exercise };
   lock_changed: { locked: boolean };
   session_ended: Record<string, never>;
   participant_disconnected: { participantId: string };
+}
+
+export type RealtimeConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'offline' | 'unauthorized' | 'disconnected';
+
+export interface ClassroomEventEnvelope<T extends keyof ClassroomEventMap = keyof ClassroomEventMap> {
+  version: 1;
+  id: string;
+  type: T;
+  occurredAt: string;
+  payload: ClassroomEventMap[T];
 }
 
 export interface DesktopBridge {
