@@ -129,7 +129,27 @@ const server = http.createServer(async (req,res) => {
       if(decision && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const [_,rid,action]=decision; const r=db.prepare('SELECT * FROM join_requests WHERE id=? AND session_id=?').get(rid,s.id); if(!r) return send(res,404,{error:'Admission request not found'}); const desired=action==='approve'?'approved':'rejected'; if(r.status===desired){const unchanged=db.prepare('SELECT id,name,roll,status,requested_at FROM join_requests WHERE id=?').get(rid);return send(res,200,{request:unchanged,unchanged:true})} if(r.status!=='pending') return send(res,409,{error:'Admission request already has a different decision'});
         let token=null; if(action==='approve') { token=crypto.randomBytes(32).toString('base64url'); db.prepare("UPDATE join_requests SET status='approved',token_hash=? WHERE id=?").run(hash(token),rid); pendingTokens.set(rid, {token,expires:Date.now()+60_000}); } else db.prepare("UPDATE join_requests SET status='rejected' WHERE id=?").run(rid);
         const updated=db.prepare('SELECT id,name,roll,status,requested_at FROM join_requests WHERE id=?').get(rid); broadcast('admission_updated',{request:updated}); return send(res,200,{request:updated}); }
-      if(url.pathname==='/api/participants' && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); const participants=db.prepare("SELECT id,name,roll,status,requested_at FROM join_requests WHERE session_id=? AND status='approved' ORDER BY name").all(s.id).map(p=>({...p,connected:[...clients].some(c=>!c.teacher&&c.participantId===p.id),latestSubmission:db.prepare('SELECT id,submitted_at,exercise_title FROM submissions WHERE student_id=? ORDER BY submitted_at DESC,id DESC LIMIT 1').get(p.id)||null})); return send(res,200,{participants}); }
+      if (url.pathname === '/api/participants' && req.method === 'GET') {
+        if (!localOnly(req, res)) return;
+
+        const session = requireSession();
+        const participants = db.prepare(
+          "SELECT id,name,roll,status,requested_at FROM join_requests " +
+          "WHERE session_id=? AND status='approved' ORDER BY name"
+        ).all(session.id).map((participant) => {
+          const connected = [...clients].some((client) => (
+            !client.teacher && client.participantId === participant.id
+          ));
+          const latestSubmission = db.prepare(
+            'SELECT id,submitted_at,exercise_title FROM submissions ' +
+            'WHERE student_id=? ORDER BY submitted_at DESC,id DESC LIMIT 1'
+          ).get(participant.id) || null;
+
+          return { ...participant, connected, latestSubmission };
+        });
+
+        return send(res, 200, { participants });
+      }
       const disconnect=url.pathname.match(/^\/api\/participants\/([^/]+)\/disconnect$/);
       if(disconnect && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const participant=db.prepare('SELECT id,status FROM join_requests WHERE id=? AND session_id=?').get(disconnect[1],s.id); if(!participant) return send(res,404,{error:'Participant not found'}); if(participant.status==='rejected') return send(res,200,{ok:true,unchanged:true}); if(participant.status!=='approved') return send(res,409,{error:'Participant is not connected'}); db.prepare("UPDATE join_requests SET status='rejected',token_hash=NULL WHERE id=? AND session_id=?").run(disconnect[1],s.id); broadcast('participant_disconnected',{participantId:disconnect[1]}); return send(res,200,{ok:true}); }
       if(url.pathname==='/api/lock' && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const b=await readBody(req); if(typeof b.locked!=='boolean') return send(res,400,{error:'locked must be a boolean'}); const current=!!s.locked; if(current!==b.locked){db.prepare('UPDATE sessions SET locked=? WHERE id=?').run(b.locked?1:0,s.id);broadcast('lock_changed',{locked:b.locked});} return send(res,200,{locked:b.locked,unchanged:current===b.locked}); }
@@ -139,8 +159,36 @@ const server = http.createServer(async (req,res) => {
       if(url.pathname.startsWith('/api/workspace/') && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); const studentId=url.pathname.split('/').pop(); const row=db.prepare('SELECT files,updated_at FROM workspaces WHERE student_id=?').get(studentId); if(!row) return send(res,200,{files:[],updatedAt:null}); return send(res,200,{files:JSON.parse(row.files),updatedAt:row.updated_at}); }
       if(url.pathname==='/api/submit' && req.method==='POST') { const s=requireSession(); const participant=getParticipant(req,s.id); if(!participant) return send(res,401,{error:'Approved student token required'}); const b=await readBody(req); const files=safeFiles(b.files); const submissionId=id(); db.prepare('INSERT INTO submissions(id,student_id,exercise_title,files,submitted_at) VALUES(?,?,?,?,?)').run(submissionId,participant.id,s.exercise?JSON.parse(s.exercise).title:'Practice',JSON.stringify(files),now()); broadcast('submission_received',{id:submissionId,studentId:participant.id,name:participant.name}); return send(res,201,{ok:true,id:submissionId,submittedAt:now()}); }
       if(url.pathname==='/api/submissions' && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); const rows=db.prepare('SELECT submissions.id,student_id,name,roll,exercise_title,submitted_at FROM submissions JOIN join_requests ON join_requests.id=submissions.student_id WHERE join_requests.session_id=? ORDER BY submitted_at DESC').all(s.id); return send(res,200,{submissions:rows}); }
-      const submissionMatch=url.pathname.match(/^\/api\/submissions\/([^/]+)$/);
-      if(submissionMatch && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); const row=db.prepare('SELECT submissions.id,submissions.exercise_title,submissions.files,submissions.submitted_at,join_requests.id AS student_id,join_requests.name,join_requests.roll FROM submissions JOIN join_requests ON join_requests.id=submissions.student_id WHERE submissions.id=? AND join_requests.session_id=?').get(submissionMatch[1],s.id); if(!row) return send(res,404,{error:'Submission not found'}); return send(res,200,{submission:{id:row.id,exerciseTitle:row.exercise_title,submittedAt:row.submitted_at,student:{id:row.student_id,name:row.name,roll:row.roll},files:JSON.parse(row.files)}}); }
+      const submissionMatch = url.pathname.match(/^\/api\/submissions\/([^/]+)$/);
+      if (submissionMatch && req.method === 'GET') {
+        if (!localOnly(req, res)) return;
+
+        const session = requireSession();
+        const row = db.prepare(
+          'SELECT submissions.id, submissions.exercise_title, submissions.files, ' +
+          'submissions.submitted_at, join_requests.id AS student_id, ' +
+          'join_requests.name, join_requests.roll ' +
+          'FROM submissions JOIN join_requests ' +
+          'ON join_requests.id=submissions.student_id ' +
+          'WHERE submissions.id=? AND join_requests.session_id=?'
+        ).get(submissionMatch[1], session.id);
+
+        if (!row) return send(res, 404, { error: 'Submission not found' });
+
+        const submission = {
+          id: row.id,
+          exerciseTitle: row.exercise_title,
+          submittedAt: row.submitted_at,
+          student: {
+            id: row.student_id,
+            name: row.name,
+            roll: row.roll
+          },
+          files: JSON.parse(row.files)
+        };
+
+        return send(res, 200, { submission });
+      }
       return send(res,404,{error:'API route not found'});
     }
     const isMonaco=url.pathname.startsWith('/monaco/');
