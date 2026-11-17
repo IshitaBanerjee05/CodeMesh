@@ -24,9 +24,11 @@ The MVP still uses unencrypted HTTP over LAN. This is a known production blocker
 
 SQLite is stored in the user's `.codemesh` directory. Workspace files and submissions are JSON-serialized records in SQLite for the first MVP. The architecture can later move larger workspace blobs to the host filesystem with SQLite metadata and hashes.
 
-## Event transport
+## Event transport and recovery
 
-SSE is used as a deliberately small first implementation. Teacher clients receive classroom events; authenticated student clients receive only classroom-wide lock/exercise/session events plus their own disconnect event. Replace SSE with the specified authenticated WebSocket gateway before implementing high-frequency collaboration/Yjs updates.
+SSE remains the classroom event transport in v0.5. Each message has a versioned, validated envelope and a server-instance/stream sequence ID. Teacher streams are loopback-only. Student streams authenticate with the bearer token in the Authorization header and receive classroom-wide lock, exercise and session events plus only their own disconnect event. Query-string tokens are rejected. The host sends SSE heartbeat comments every 15 seconds, disconnects streams with over 1 MiB of queued output, and exposes connection counts, event counts, backpressure and process resource metrics from `/api/health`.
+
+Clients reconnect with bounded exponential backoff and jitter. After every stream connection they fetch authoritative session state or their own workspace before processing new events; duplicate event IDs are ignored, and stream gaps or server restarts trigger another snapshot. The host does not keep a replay log. SSE is retained because the current workflow needs low-rate notifications; measured fan-out metrics will inform any future transport change. High-frequency collaboration and Yjs remain out of scope until load testing demonstrates a need.
 
 ## Student editor
 
