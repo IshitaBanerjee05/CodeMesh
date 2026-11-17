@@ -1,9 +1,9 @@
-# CodeMesh — MVP v0.6 (Teacher workflow in progress)
+# CodeMesh — MVP v0.7 (Security hardening in progress)
 
 CodeMesh is a local-first programming classroom prototype. v0.3 replaced the student code textarea with Monaco Editor. v0.4 began an incremental React + TypeScript renderer migration; v0.5 strengthens the existing SSE classroom transport and restores authoritative state after temporary network loss.
 
-## v0.6 progress
-The teacher roster now reports live student presence and latest submission state. Teachers can review submitted files from a read-only view scoped to the active classroom. Admission, session, exercise, lock and workspace monitoring flows remain in place.
+## v0.7 progress
+Request bodies have a 2 MB hard limit. Oversized declared-length and chunked requests return HTTP 413 without retaining the full payload. Invalid join-code attempts are limited to 8 per IP per minute, and valid admission requests to 10 per IP per active session per minute. Rate-limit state is bounded and expired buckets are pruned.
 
 The renderer build uses React and TypeScript. The shared navigation/header shell is now a React component; teacher/student screen content remains behind a legacy compatibility adapter during the incremental migration. Shared classroom contracts and a typed HTTP client are in place.
 

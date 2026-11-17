@@ -2,6 +2,8 @@
 
 Base path: `/api`; JSON request/response bodies unless noted.
 
+JSON request bodies are limited to 2,000,000 bytes. Larger declared-length or streamed requests return HTTP 413. Join-code guesses are limited to 8 per source IP per minute; valid admission requests are limited to 10 per source IP and active session per minute.
+
 ## Teacher routes (loopback only)
 
 - `GET /api/health` — host status, version, uptime, LAN addresses, live SSE client counts and cumulative event fan-out metrics.

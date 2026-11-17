@@ -23,16 +23,88 @@ CREATE TABLE IF NOT EXISTS submissions(id TEXT PRIMARY KEY, student_id TEXT NOT 
 const clients = new Set();
 const serverInstanceId = crypto.randomUUID();
 const MAX_SSE_BUFFER_BYTES = 1_048_576;
+const MAX_REQUEST_BYTES = 2_000_000;
 const eventMetrics = { published: 0, deliveries: 0, backpressureCount: 0, slowClientsDisconnected: 0, bytesSent: 0, byType: Object.create(null) };
 const pendingTokens = new Map();
 const joinAttempts = new Map();
+const admissionAttempts = new Map();
+const MAX_JOIN_ATTEMPTS_PER_IP = 8;
+const MAX_ADMISSIONS_PER_IP = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const MAX_RATE_LIMIT_KEYS = 4096;
 let currentSessionId = db.prepare("SELECT id FROM sessions WHERE status='active' ORDER BY created_at DESC LIMIT 1").get()?.id || null;
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
 const randomCode = () => crypto.randomBytes(6).toString('hex').toUpperCase();
 const hash = (v) => crypto.createHash('sha256').update(v).digest('hex');
 const send = (res, status, data) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }); res.end(JSON.stringify(data)); };
-const readBody = (req) => new Promise((resolve, reject) => { let raw=''; req.on('data', c => { raw += c; if(raw.length > 2_000_000) reject(new Error('Request too large')); }); req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('Invalid JSON')); } }); req.on('error', reject); });
+function getRateLimitBucket(buckets, key) {
+  const currentTime = Date.now();
+  for (const [bucketKey, bucket] of buckets) {
+    if (bucket.resetAt <= currentTime) buckets.delete(bucketKey);
+  }
+
+  let bucket = buckets.get(key);
+  if (!bucket || bucket.resetAt <= currentTime) {
+    bucket = { count: 0, resetAt: currentTime + RATE_LIMIT_WINDOW_MS };
+  }
+
+  buckets.delete(key);
+  buckets.set(key, bucket);
+  while (buckets.size > MAX_RATE_LIMIT_KEYS) {
+    buckets.delete(buckets.keys().next().value);
+  }
+
+  return bucket;
+}
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const contentLength = Number(req.headers['content-length']);
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+      const error = Object.assign(new Error('Request too large'), { status: 413 });
+      req.resume();
+      reject(error);
+      return;
+    }
+
+    let receivedBytes = 0;
+    const chunks = [];
+    let settled = false;
+
+    req.on('data', (chunk) => {
+      if (settled) return;
+
+      receivedBytes += chunk.length;
+      if (receivedBytes > MAX_REQUEST_BYTES) {
+        settled = true;
+        reject(Object.assign(new Error('Request too large'), { status: 413 }));
+        return;
+      }
+
+      chunks.push(chunk);
+    });
+
+    req.on('end', () => {
+      if (settled) return;
+
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8');
+        const body = raw ? JSON.parse(raw) : {};
+        settled = true;
+        resolve(body);
+      } catch {
+        settled = true;
+        reject(Object.assign(new Error('Invalid JSON'), { status: 400 }));
+      }
+    });
+
+    req.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
+  });
+}
 function isLoopback(address='') { return address==='127.0.0.1' || address==='::1' || address==='::ffff:127.0.0.1'; }
 function localOnly(req,res) { if(!isLoopback(req.socket.remoteAddress)) { send(res,403,{error:'Teacher controls are available only from the host computer. Open CodeMesh at http://localhost:4173 on the teacher laptop.'}); return false; } return true; }
 function broadcast(type, payload={}) {
@@ -102,7 +174,7 @@ const server = http.createServer(async (req,res) => {
       if(url.pathname==='/api/health') {
         const streamClients=[...clients];
         const memory=process.memoryUsage();
-        return send(res,200,{ok:true,version:'0.6.0',runtime:{uptimeSeconds:Math.floor(process.uptime()),memoryBytes:{rss:memory.rss,heapUsed:memory.heapUsed},cpuMicroseconds:process.cpuUsage()},addresses:networkAddresses(),realtime:{sseClients:{teacher:streamClients.filter(c=>c.teacher).length,student:streamClients.filter(c=>!c.teacher).length},eventsPublished:eventMetrics.published,deliveries:eventMetrics.deliveries,backpressureCount:eventMetrics.backpressureCount,slowClientsDisconnected:eventMetrics.slowClientsDisconnected,bytesSent:eventMetrics.bytesSent,eventsByType:{...eventMetrics.byType}}});
+        return send(res,200,{ok:true,version:'0.7.0',runtime:{uptimeSeconds:Math.floor(process.uptime()),memoryBytes:{rss:memory.rss,heapUsed:memory.heapUsed},cpuMicroseconds:process.cpuUsage()},addresses:networkAddresses(),realtime:{sseClients:{teacher:streamClients.filter(c=>c.teacher).length,student:streamClients.filter(c=>!c.teacher).length},eventsPublished:eventMetrics.published,deliveries:eventMetrics.deliveries,backpressureCount:eventMetrics.backpressureCount,slowClientsDisconnected:eventMetrics.slowClientsDisconnected,bytesSent:eventMetrics.bytesSent,eventsByType:{...eventMetrics.byType}}});
       }
       if(url.pathname==='/api/session' && req.method==='GET') { if(!localOnly(req,res)) return; return send(res,200,{session:getSession(),addresses:networkAddresses()}); }
       if(url.pathname==='/api/session' && req.method==='POST') { if(!localOnly(req,res)) return;
@@ -114,12 +186,28 @@ const server = http.createServer(async (req,res) => {
       }
       if(url.pathname==='/api/session/end' && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); db.prepare("UPDATE sessions SET status='ended' WHERE id=?").run(s.id); db.prepare("UPDATE join_requests SET status='rejected',token_hash=NULL WHERE session_id=?").run(s.id); pendingTokens.clear(); broadcast('session_ended',{}); currentSessionId=null; return send(res,200,{ok:true}); }
       if(url.pathname==='/api/join' && req.method==='POST') {
-        const b=await readBody(req); const s=requireSession(); const ip=req.socket.remoteAddress||'unknown'; const attempt=joinAttempts.get(ip)||{count:0,reset:Date.now()+60_000}; if(Date.now()>attempt.reset){attempt.count=0;attempt.reset=Date.now()+60_000;} if(attempt.count>=8) return send(res,429,{error:'Too many attempts. Wait one minute and try again.'}); if(String(b.code||'').toUpperCase()!==s.code){attempt.count++;joinAttempts.set(ip,attempt);return send(res,401,{error:'Incorrect classroom code'});} joinAttempts.delete(ip);
+        const b = await readBody(req);
+        const s = requireSession();
+        const ip = req.socket.remoteAddress || 'unknown';
+        const attempt = getRateLimitBucket(joinAttempts, ip);
+        if (attempt.count >= MAX_JOIN_ATTEMPTS_PER_IP) {
+          return send(res, 429, { error: 'Too many attempts. Wait one minute and try again.' });
+        }
+        if (String(b.code || '').toUpperCase() !== s.code) {
+          attempt.count += 1;
+          return send(res, 401, { error: 'Incorrect classroom code' });
+        }
+        joinAttempts.delete(ip);
         if(!b.name?.trim()||!b.roll?.trim()) return send(res,400,{error:'Name and roll number are required'});
         const recent=db.prepare("SELECT COUNT(*) AS n FROM join_requests WHERE session_id=? AND roll=? AND requested_at > ?").get(s.id,b.roll.trim(),new Date(Date.now()-60_000).toISOString()).n;
         if(recent) return send(res,429,{error:'A request for this roll number was already submitted recently'});
+        const admissionAttempt = getRateLimitBucket(admissionAttempts, `${s.id}:${ip}`);
+        if (admissionAttempt.count >= MAX_ADMISSIONS_PER_IP) {
+          return send(res, 429, { error: 'Too many admission requests from this device. Wait one minute and try again.' });
+        }
         const request={id:id(),session_id:s.id,name:b.name.trim().slice(0,80),roll:b.roll.trim().slice(0,40),status:'pending',requested_at:now()};
         db.prepare('INSERT INTO join_requests(id,session_id,name,roll,status,requested_at) VALUES(?,?,?,?,?,?)').run(request.id,request.session_id,request.name,request.roll,request.status,request.requested_at);
+        admissionAttempt.count += 1;
         broadcast('join_request',{request}); return send(res,201,{request});
       }
       const statusMatch=url.pathname.match(/^\/api\/join-status\/([^/]+)$/);

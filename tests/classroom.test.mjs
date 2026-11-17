@@ -78,6 +78,33 @@ test('teacher admission, student workspace, lock and submission flow', async (t)
   assert.equal(create.session.status, 'active');
   assert.equal(create.session.code.length, 12);
 
+  const oversizedPayload = `{"payload":"${'x'.repeat(2_000_001)}"}`;
+  const declaredLengthResponse = await fetch(`${base}/api/join`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: oversizedPayload
+  });
+  assert.equal(declaredLengthResponse.status, 413);
+
+  const encoder = new TextEncoder();
+  const chunkedPayload = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode('{"payload":"'));
+      for (let chunk = 0; chunk < 5; chunk += 1) {
+        controller.enqueue(encoder.encode('x'.repeat(500_000)));
+      }
+      controller.enqueue(encoder.encode('"}'));
+      controller.close();
+    }
+  });
+  const streamedLengthResponse = await fetch(`${base}/api/join`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: chunkedPayload,
+    duplex: 'half'
+  });
+  assert.equal(streamedLengthResponse.status, 413);
+
   const teacherStream = await fetch(`${base}/events`);
   assert.equal(teacherStream.status, 200);
   const teacherReader = teacherStream.body.getReader();
@@ -125,7 +152,7 @@ test('teacher admission, student workspace, lock and submission flow', async (t)
   assert.match(presenceFrame, /"connected":true/);
 
   const health = await fetch(`${base}/api/health`).then((response) => response.json());
-  assert.equal(health.version, '0.6.0');
+  assert.equal(health.version, '0.7.0');
   assert.equal(health.realtime.sseClients.student, 1);
   assert.ok(health.runtime.memoryBytes.rss > 0);
 
@@ -159,6 +186,30 @@ test('teacher admission, student workspace, lock and submission flow', async (t)
     'content-type': 'application/json',
     authorization: `Bearer ${secondAdmission.token}`
   };
+
+  for (let index = 0; index < 8; index += 1) {
+    const rateLimitedJoin = await fetch(`${base}/api/join`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        code: create.session.code,
+        name: `Rate Test ${index}`,
+        roll: `RATE-${index}`
+      })
+    });
+    assert.equal(rateLimitedJoin.status, 201);
+  }
+
+  const admissionLimit = await fetch(`${base}/api/join`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      code: create.session.code,
+      name: 'Rate Test Overflow',
+      roll: 'RATE-OVERFLOW'
+    })
+  });
+  assert.equal(admissionLimit.status, 429);
 
   const roster = await fetch(`${base}/api/participants`).then((response) => response.json());
   assert.equal(roster.participants.length, 2);
@@ -298,6 +349,22 @@ test('teacher admission, student workspace, lock and submission flow', async (t)
     method: 'POST'
   }).then((response) => response.json());
   assert.equal(repeatedDisconnect.unchanged, true);
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const invalidCode = await fetch(`${base}/api/join`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: 'incorrect', name: 'Unknown', roll: `BAD-${attempt}` })
+    });
+    assert.equal(invalidCode.status, 401);
+  }
+
+  const invalidCodeLimit = await fetch(`${base}/api/join`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code: 'incorrect', name: 'Unknown', roll: 'BAD-OVERFLOW' })
+  });
+  assert.equal(invalidCodeLimit.status, 429);
 
   const finalHealth = await fetch(`${base}/api/health`).then((response) => response.json());
   assert.ok(finalHealth.realtime.deliveries >= 3);

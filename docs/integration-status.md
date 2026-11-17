@@ -1,4 +1,12 @@
-# CodeMesh integration status — v0.6 teacher workflow in progress
+# CodeMesh integration status — v0.7 security hardening in progress
+
+## v0.7 progress
+- Request bodies are capped at 2 MB using both the declared content length and actual streamed bytes.
+- Oversized requests return HTTP 413; the reader stops retaining further chunks after the limit is crossed.
+- Join-code guesses are limited to 8 per IP per minute. Valid admission requests are limited to 10 per IP and active session per minute.
+- Rate-limit buckets expire and the in-memory maps are capped at 4,096 keys.
+- Integration coverage exercises declared-length and chunked oversized requests, plus both join-code and admission limits.
+- Full route/auth review, execution boundary review, TLS planning, OS isolation assessment, and physical security validation remain outstanding.
 
 ## v0.6 teacher workflow in progress
 - Approved student roster reports live stream presence; presence changes use validated SSE events.

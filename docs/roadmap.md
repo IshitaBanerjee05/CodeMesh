@@ -1,6 +1,6 @@
-# v0.6 teacher workflow
+# v0.7 security hardening
 
-v0.6 adds live roster presence, per-student submission progress and teacher review of submitted files. Admission, exercise distribution, lock control, workspace preview and session end already exist. Continue to preserve SSE reliability and the local-only teacher control boundary.
+v0.7 now enforces request-body limits and per-IP join/admission rate limits with bounded in-memory buckets. Continue to preserve the v0.5 SSE recovery behavior and the local-only teacher control boundary.
 
 1. Complete React + TypeScript screen migration and establish feature parity across teacher and student workflows.
 2. Exercise real Wi-Fi interruption/reconnect on two devices; check saved workspace recovery and offline local draft retention.
