@@ -14,6 +14,8 @@ export interface StudentParticipant {
   name: string;
   roll: string;
   status: 'pending' | 'approved' | 'rejected';
+  connected?: boolean;
+  latestSubmission?: { id: string; submitted_at: string; exercise_title: string } | null;
 }
 
 export interface WorkspaceFile {
@@ -60,6 +62,7 @@ export interface ClassroomEventMap {
   lock_changed: { locked: boolean };
   session_ended: Record<string, never>;
   participant_disconnected: { participantId: string };
+  participant_presence_changed: { participantId: string; name: string; connected: boolean };
 }
 
 export type RealtimeConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'offline' | 'unauthorized' | 'disconnected';

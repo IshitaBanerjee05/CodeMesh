@@ -1,6 +1,6 @@
-# Next implementation milestones
+# v0.6 teacher workflow
 
-The v0.4 renderer migration is underway, Monaco is locally bundled, and v0.5 now adds versioned SSE events, heartbeat checks, retry/resynchronization and health metrics. Continue from that implementation rather than replacing SSE by default.
+v0.6 adds live roster presence, per-student submission progress and teacher review of submitted files. Admission, exercise distribution, lock control, workspace preview and session end already exist. Continue to preserve SSE reliability and the local-only teacher control boundary.
 
 1. Complete React + TypeScript screen migration and establish feature parity across teacher and student workflows.
 2. Exercise real Wi-Fi interruption/reconnect on two devices; check saved workspace recovery and offline local draft retention.

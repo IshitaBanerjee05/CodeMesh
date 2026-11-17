@@ -11,12 +11,13 @@ Base path: `/api`; JSON request/response bodies unless noted.
 - `GET /api/requests` — list admission requests.
 - `POST /api/requests/:id/approve` — approve pending student.
 - `POST /api/requests/:id/reject` — reject pending student.
-- `GET /api/participants` — approved participants.
+- `GET /api/participants` — approved participants with current SSE connection state and latest submission summary.
 - `POST /api/participants/:id/disconnect` — revoke one participant.
 - `POST /api/lock` `{locked:boolean}` — lock/unlock student editors.
 - `POST /api/exercise` `{title,instructions,language,files}` — publish exercise/starter files.
 - `GET /api/workspace/:studentId` — read-only latest workspace snapshot.
-- `GET /api/submissions` — submission list.
+- `GET /api/submissions` — submission history summary for the active classroom.
+- `GET /api/submissions/:id` — read-only submission contents; limited to the active classroom and loopback teacher clients.
 
 ## Student routes
 
@@ -52,6 +53,7 @@ Each SSE classroom message uses the `codemesh` event name and contains a validat
 | `exercise_published` | `{ exercise }` |
 | `lock_changed` | `{ locked }` |
 | `participant_disconnected` | `{ participantId }` (sent only to that student and teachers) |
+| `participant_presence_changed` | `{ participantId, name, connected }` (sent to teachers when a student SSE stream connects or closes) |
 | `session_ended` | `{}` |
 
 The server validates each payload before fan-out. SSE comments carry a heartbeat every 15 seconds by default. On a reconnect, clients fetch the current teacher session state or their own workspace and session settings before applying new events; event IDs support duplicate suppression, stream-gap detection and server-restart detection. The server resumes the stream sequence from `Last-Event-ID` but does not replay an event history. Client retry delays use exponential backoff from 1 second up to 30 seconds with ±20% jitter. A stream whose unsent buffer exceeds 1 MiB is closed so it can reconnect and recover from the authoritative snapshot. `/api/health` reports process uptime, RSS/heap, CPU time, active SSE clients, events published/delivered, event bytes, backpressure, slow-client disconnects and counts by event type.

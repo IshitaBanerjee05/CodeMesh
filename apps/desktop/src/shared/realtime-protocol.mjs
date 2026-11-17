@@ -11,7 +11,8 @@ const validators = {
   exercise_published: (p) => object(p) && object(p.exercise) && string(p.exercise.id) && string(p.exercise.title),
   lock_changed: (p) => object(p) && typeof p.locked === 'boolean',
   session_ended: (p) => object(p),
-  participant_disconnected: (p) => object(p) && string(p.participantId)
+  participant_disconnected: (p) => object(p) && string(p.participantId),
+  participant_presence_changed: (p) => object(p) && string(p.participantId) && string(p.name) && typeof p.connected === 'boolean'
 };
 
 export function createEventEnvelope(type, payload, id, occurredAt = new Date().toISOString()) {

@@ -1,4 +1,11 @@
-# CodeMesh integration status — v0.5 real-time reliability
+# CodeMesh integration status — v0.6 teacher workflow in progress
+
+## v0.6 teacher workflow in progress
+- Approved student roster reports live stream presence; presence changes use validated SSE events.
+- Teacher monitor distinguishes online and offline students and shows whether each has submitted.
+- Teacher can review a submission's files through a loopback-only, active-session-scoped read route.
+- Session end revokes tokens and preserves existing records/submissions; automatic deletion policy remains intentionally undefined.
+- Full teacher UI workflow and multi-device/manual LAN verification remain outstanding.
 
 ## v0.4 progress
 - React and TypeScript dependencies are pinned by the package lockfile.
@@ -30,7 +37,7 @@
 
 ## Verification and manual checks
 - `npm run check` passed: renderer/Monaco bundles build, JavaScript syntax checks pass and TypeScript reports no errors.
-- `npm test` passed: 14 tests, including SSE authentication/heartbeats, versioned payload validation, retry backoff and cancellation, snapshot recovery, deduplication, retry-safe actions and workspace identity isolation.
+- `npm test` passed: 14 tests, including SSE authentication/heartbeats, versioned payload validation, retry backoff/cancellation, snapshot recovery, deduplication, retry-safe actions, workspace isolation, presence transitions and submission detail retrieval.
 - Server integration tests create two students, verify token-scoped workspace isolation, and exercise SSE authentication, heartbeats, event delivery and disconnect notifications. Client unit tests simulate a dropped stream and snapshot recovery.
 - Manual Wi-Fi interruption/reconnection across two physical devices, offline-LAN operation and host CPU/memory/fan-out measurements under representative classroom load remain outstanding.
 
