@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { createEventEnvelope } from '../shared/realtime-protocol.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const WEB = path.join(ROOT, 'apps/desktop/src/renderer');
@@ -20,6 +21,9 @@ CREATE TABLE IF NOT EXISTS workspaces(student_id TEXT PRIMARY KEY, files TEXT NO
 CREATE TABLE IF NOT EXISTS submissions(id TEXT PRIMARY KEY, student_id TEXT NOT NULL, exercise_title TEXT, files TEXT NOT NULL, submitted_at TEXT NOT NULL);`);
 
 const clients = new Set();
+const serverInstanceId = crypto.randomUUID();
+const MAX_SSE_BUFFER_BYTES = 1_048_576;
+const eventMetrics = { published: 0, deliveries: 0, backpressureCount: 0, slowClientsDisconnected: 0, bytesSent: 0, byType: Object.create(null) };
 const pendingTokens = new Map();
 const joinAttempts = new Map();
 let currentSessionId = db.prepare("SELECT id FROM sessions WHERE status='active' ORDER BY created_at DESC LIMIT 1").get()?.id || null;
@@ -31,7 +35,25 @@ const send = (res, status, data) => { res.writeHead(status, { 'content-type': 'a
 const readBody = (req) => new Promise((resolve, reject) => { let raw=''; req.on('data', c => { raw += c; if(raw.length > 2_000_000) reject(new Error('Request too large')); }); req.on('end', () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error('Invalid JSON')); } }); req.on('error', reject); });
 function isLoopback(address='') { return address==='127.0.0.1' || address==='::1' || address==='::ffff:127.0.0.1'; }
 function localOnly(req,res) { if(!isLoopback(req.socket.remoteAddress)) { send(res,403,{error:'Teacher controls are available only from the host computer. Open CodeMesh at http://localhost:4173 on the teacher laptop.'}); return false; } return true; }
-function broadcast(type, payload={}) { const event = `event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`; for (const client of clients) { if(client.teacher || ['lock_changed','exercise_published','session_ended'].includes(type) || (type==='participant_disconnected' && payload.participantId===client.participantId)) client.res.write(event); } }
+function broadcast(type, payload={}) {
+  eventMetrics.published += 1;
+  eventMetrics.byType[type] = (eventMetrics.byType[type] || 0) + 1;
+  for (const client of clients) {
+    if(client.teacher || ['lock_changed','exercise_published','session_ended'].includes(type) || (type==='participant_disconnected' && payload.participantId===client.participantId)) {
+      const envelope = createEventEnvelope(type, payload, `${serverInstanceId}:${++client.eventSequence}`, now());
+      const frame = `id: ${envelope.id}\nevent: codemesh\ndata: ${JSON.stringify(envelope)}\n\n`;
+      eventMetrics.deliveries += 1;
+      eventMetrics.bytesSent += Buffer.byteLength(frame);
+      const canContinue = client.res.write(frame);
+      if (!canContinue) eventMetrics.backpressureCount += 1;
+      if (client.res.writableLength > MAX_SSE_BUFFER_BYTES) {
+        eventMetrics.slowClientsDisconnected += 1;
+        clients.delete(client);
+        client.res.destroy();
+      }
+    }
+  }
+}
 function getSession() { return currentSessionId ? db.prepare('SELECT * FROM sessions WHERE id=?').get(currentSessionId) : null; }
 function requireSession() { const s=getSession(); if(!s || s.status!=='active') throw Object.assign(new Error('No active classroom'), {status: 404}); return s; }
 function getParticipant(req, sessionId) {
@@ -49,11 +71,34 @@ function safeFiles(files) {
 
 const server = http.createServer(async (req,res) => {
   const url = new URL(req.url, 'http://localhost');
-  if(req.method==='OPTIONS') { res.writeHead(204, {'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'content-type,authorization'}); return res.end(); }
+  if(req.method==='OPTIONS') { res.writeHead(204, {'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,OPTIONS','access-control-allow-headers':'content-type,authorization,last-event-id'}); return res.end(); }
   try {
-    if(url.pathname==='/events' && req.method==='GET') { const rawToken=url.searchParams.get('token'); const participant=rawToken?db.prepare("SELECT id FROM join_requests WHERE token_hash=? AND status='approved' AND session_id=?").get(hash(rawToken),currentSessionId):null; const teacher=!rawToken && isLoopback(req.socket.remoteAddress); if(!teacher && !participant) return send(res,401,{error:'Authenticated classroom connection required'}); res.writeHead(200, {'content-type':'text/event-stream','cache-control':'no-cache','connection':'keep-alive','access-control-allow-origin':'*'}); res.write(`event: ready\ndata: {}\n\n`); const client={res,teacher,participantId:participant?.id||null}; clients.add(client); req.on('close',()=>clients.delete(client)); return; }
+    if(url.pathname==='/events' && req.method==='GET') {
+      if (url.searchParams.has('token')) return send(res,401,{error:'Use the Authorization header for classroom event streams'});
+      const rawToken = (req.headers.authorization || '').replace(/^Bearer\s+/i,'');
+      const participant = rawToken ? db.prepare("SELECT id FROM join_requests WHERE token_hash=? AND status='approved' AND session_id=?").get(hash(rawToken),currentSessionId) : null;
+      const teacher = !rawToken && isLoopback(req.socket.remoteAddress);
+      if (!teacher && !participant) return send(res,401,{error:'Authenticated classroom connection required'});
+      res.writeHead(200, {'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','access-control-allow-origin':'*','x-accel-buffering':'no','x-codemesh-protocol':'1'});
+      res.flushHeaders?.();
+      res.write(': connected\n\n');
+      const lastId = String(req.headers['last-event-id'] || '');
+      const lastParts = lastId.split(':');
+      const parsedSequence = lastParts.length===2 && lastParts[0]===serverInstanceId && /^\d{1,16}$/.test(lastParts[1]) ? Number(lastParts[1]) : 0;
+      const lastSequence = Number.isSafeInteger(parsedSequence) ? parsedSequence : 0;
+      const client={res,teacher,participantId:participant?.id||null,eventSequence:lastSequence};
+      clients.add(client);
+      const removeClient=()=>clients.delete(client);
+      req.on('aborted',removeClient);
+      res.on('close',removeClient);
+      return;
+    }
     if(url.pathname.startsWith('/api/')) {
-      if(url.pathname==='/api/health') return send(res,200,{ok:true,version:'0.1.0',addresses:networkAddresses()});
+      if(url.pathname==='/api/health') {
+        const streamClients=[...clients];
+        const memory=process.memoryUsage();
+        return send(res,200,{ok:true,version:'0.5.0',runtime:{uptimeSeconds:Math.floor(process.uptime()),memoryBytes:{rss:memory.rss,heapUsed:memory.heapUsed},cpuMicroseconds:process.cpuUsage()},addresses:networkAddresses(),realtime:{sseClients:{teacher:streamClients.filter(c=>c.teacher).length,student:streamClients.filter(c=>!c.teacher).length},eventsPublished:eventMetrics.published,deliveries:eventMetrics.deliveries,backpressureCount:eventMetrics.backpressureCount,slowClientsDisconnected:eventMetrics.slowClientsDisconnected,bytesSent:eventMetrics.bytesSent,eventsByType:{...eventMetrics.byType}}});
+      }
       if(url.pathname==='/api/session' && req.method==='GET') { if(!localOnly(req,res)) return; return send(res,200,{session:getSession(),addresses:networkAddresses()}); }
       if(url.pathname==='/api/session' && req.method==='POST') { if(!localOnly(req,res)) return;
         const b=await readBody(req); if(!b.name?.trim()) return send(res,400,{error:'Classroom name is required'});
@@ -76,13 +121,13 @@ const server = http.createServer(async (req,res) => {
       if(statusMatch && req.method==='GET') { const r=db.prepare('SELECT id,status FROM join_requests WHERE id=?').get(statusMatch[1]); if(!r) return send(res,404,{error:'Request not found'}); const pending=pendingTokens.get(r.id); const token=pending&&pending.expires>Date.now()?pending.token:null; if(pending&&pending.expires<=Date.now())pendingTokens.delete(r.id); return send(res,200,{status:r.status,token}); }
       if(url.pathname==='/api/requests' && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); return send(res,200,{requests:db.prepare('SELECT id,name,roll,status,requested_at FROM join_requests WHERE session_id=? ORDER BY requested_at DESC').all(s.id)}); }
       const decision=url.pathname.match(/^\/api\/requests\/([^/]+)\/(approve|reject)$/);
-      if(decision && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const [_,rid,action]=decision; const r=db.prepare('SELECT * FROM join_requests WHERE id=? AND session_id=?').get(rid,s.id); if(!r||r.status!=='pending') return send(res,404,{error:'Pending request not found'});
+      if(decision && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const [_,rid,action]=decision; const r=db.prepare('SELECT * FROM join_requests WHERE id=? AND session_id=?').get(rid,s.id); if(!r) return send(res,404,{error:'Admission request not found'}); const desired=action==='approve'?'approved':'rejected'; if(r.status===desired){const unchanged=db.prepare('SELECT id,name,roll,status,requested_at FROM join_requests WHERE id=?').get(rid);return send(res,200,{request:unchanged,unchanged:true})} if(r.status!=='pending') return send(res,409,{error:'Admission request already has a different decision'});
         let token=null; if(action==='approve') { token=crypto.randomBytes(32).toString('base64url'); db.prepare("UPDATE join_requests SET status='approved',token_hash=? WHERE id=?").run(hash(token),rid); pendingTokens.set(rid, {token,expires:Date.now()+60_000}); } else db.prepare("UPDATE join_requests SET status='rejected' WHERE id=?").run(rid);
         const updated=db.prepare('SELECT id,name,roll,status,requested_at FROM join_requests WHERE id=?').get(rid); broadcast('admission_updated',{request:updated}); return send(res,200,{request:updated}); }
       if(url.pathname==='/api/participants' && req.method==='GET') { if(!localOnly(req,res)) return; const s=requireSession(); return send(res,200,{participants:db.prepare("SELECT id,name,roll,status,requested_at FROM join_requests WHERE session_id=? AND status='approved' ORDER BY name").all(s.id)}); }
       const disconnect=url.pathname.match(/^\/api\/participants\/([^/]+)\/disconnect$/);
-      if(disconnect && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const result=db.prepare("UPDATE join_requests SET status='rejected',token_hash=NULL WHERE id=? AND session_id=? AND status='approved'").run(disconnect[1],s.id); if(!result.changes) return send(res,404,{error:'Participant not found'}); broadcast('participant_disconnected',{participantId:disconnect[1]}); return send(res,200,{ok:true}); }
-      if(url.pathname==='/api/lock' && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const b=await readBody(req); db.prepare('UPDATE sessions SET locked=? WHERE id=?').run(b.locked?1:0,s.id); broadcast('lock_changed',{locked:!!b.locked}); return send(res,200,{locked:!!b.locked}); }
+      if(disconnect && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const participant=db.prepare('SELECT id,status FROM join_requests WHERE id=? AND session_id=?').get(disconnect[1],s.id); if(!participant) return send(res,404,{error:'Participant not found'}); if(participant.status==='rejected') return send(res,200,{ok:true,unchanged:true}); if(participant.status!=='approved') return send(res,409,{error:'Participant is not connected'}); db.prepare("UPDATE join_requests SET status='rejected',token_hash=NULL WHERE id=? AND session_id=?").run(disconnect[1],s.id); broadcast('participant_disconnected',{participantId:disconnect[1]}); return send(res,200,{ok:true}); }
+      if(url.pathname==='/api/lock' && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const b=await readBody(req); if(typeof b.locked!=='boolean') return send(res,400,{error:'locked must be a boolean'}); const current=!!s.locked; if(current!==b.locked){db.prepare('UPDATE sessions SET locked=? WHERE id=?').run(b.locked?1:0,s.id);broadcast('lock_changed',{locked:b.locked});} return send(res,200,{locked:b.locked,unchanged:current===b.locked}); }
       if(url.pathname==='/api/exercise' && req.method==='POST') { if(!localOnly(req,res)) return; const s=requireSession(); const b=await readBody(req); if(!b.title?.trim()) return send(res,400,{error:'Exercise title is required'}); const exercise={id:id(),title:b.title.trim(),instructions:(b.instructions||'').slice(0,5000),language:b.language==='java'?'java':'python',files:safeFiles(b.files||[])}; db.prepare('UPDATE sessions SET exercise=? WHERE id=?').run(JSON.stringify(exercise),s.id); broadcast('exercise_published',{exercise}); return send(res,201,{exercise}); }
       if(url.pathname==='/api/workspace' && req.method==='GET') { const s=requireSession(); const participant=getParticipant(req,s.id); if(!participant) return send(res,401,{error:'Approved student token required'}); const row=db.prepare('SELECT files,updated_at FROM workspaces WHERE student_id=?').get(participant.id); return send(res,200,{files:row?JSON.parse(row.files):[{path:s.exercise?JSON.parse(s.exercise).language==='java'?'Main.java':'main.py':'main.py',content:s.exercise?(JSON.parse(s.exercise).files[0]?.content||''):'# Start coding here\n'}],locked:!!s.locked,sessionName:s.name,exercise:s.exercise?JSON.parse(s.exercise):null}); }
       if(url.pathname==='/api/workspace' && req.method==='POST') { const s=requireSession(); const participant=getParticipant(req,s.id); if(!participant) return send(res,401,{error:'Approved student token required'}); if(s.locked) return send(res,423,{error:'Your editor is locked by the teacher'}); const b=await readBody(req); const files=safeFiles(b.files); db.prepare('INSERT INTO workspaces(student_id,files,updated_at) VALUES(?,?,?) ON CONFLICT(student_id) DO UPDATE SET files=excluded.files,updated_at=excluded.updated_at').run(participant.id,JSON.stringify(files),now()); broadcast('workspace_updated',{studentId:participant.id,name:participant.name,updatedAt:now()}); return send(res,200,{ok:true,savedAt:now()}); }
@@ -100,5 +145,19 @@ const server = http.createServer(async (req,res) => {
     const ext=path.extname(target); const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.wasm':'application/wasm','.zip':'application/zip','.svg':'image/svg+xml','.ttf':'font/ttf','.woff':'font/woff','.woff2':'font/woff2'}; res.writeHead(200,{'content-type':types[ext]||'application/octet-stream'}); fs.createReadStream(target).pipe(res);
   } catch(e) { send(res,e.status||400,{error:e.message||'Unexpected server error'}); }
 });
+const heartbeatMs = Math.max(10, Number(process.env.CODEMESH_HEARTBEAT_MS) || 15_000);
+const heartbeatTimer = setInterval(() => {
+  for (const client of clients) {
+    if (client.res.destroyed || client.res.writableEnded) { clients.delete(client); continue; }
+    const frame = ': heartbeat\n\n';
+    eventMetrics.bytesSent += Buffer.byteLength(frame);
+    if (!client.res.write(frame)) eventMetrics.backpressureCount += 1;
+    if (client.res.writableLength > MAX_SSE_BUFFER_BYTES) {
+      eventMetrics.slowClientsDisconnected += 1;
+      clients.delete(client);
+      client.res.destroy();
+    }
+  }
+}, heartbeatMs);
 const port=Number(process.env.CODEMESH_PORT||4173); server.listen(port,'0.0.0.0',()=>{console.log(`CodeMesh host listening on http://localhost:${port}`); for(const a of networkAddresses()) console.log(`LAN: http://${a.address}:${port} (${a.interface})`);});
-process.on('SIGINT',()=>{server.close();db.close();process.exit(0);});
+process.on('SIGINT',()=>{clearInterval(heartbeatTimer);server.close();db.close();process.exit(0);});
