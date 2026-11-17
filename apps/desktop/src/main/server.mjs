@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const WEB = path.join(ROOT, 'apps/desktop/src/renderer');
 const MONACO = path.join(ROOT, 'dist/monaco');
+const RENDERER_BUILD = path.join(ROOT, 'dist/renderer');
 const DATA = process.env.CODEMESH_DATA_DIR || path.join(os.homedir(), '.codemesh');
 fs.mkdirSync(DATA, { recursive: true });
 const db = new DatabaseSync(path.join(DATA, 'codemesh.db'));
@@ -91,8 +92,9 @@ const server = http.createServer(async (req,res) => {
       return send(res,404,{error:'API route not found'});
     }
     const isMonaco=url.pathname.startsWith('/monaco/');
-    const staticRoot=isMonaco?MONACO:WEB;
-    let requested=isMonaco?decodeURIComponent(url.pathname.slice('/monaco/'.length)):(url.pathname==='/'?'index.html':url.pathname.replace(/^\//,''));
+    const isRendererBuild=url.pathname.startsWith('/build/');
+    const staticRoot=isMonaco?MONACO:isRendererBuild?RENDERER_BUILD:WEB;
+    let requested=isMonaco?decodeURIComponent(url.pathname.slice('/monaco/'.length)):isRendererBuild?decodeURIComponent(url.pathname.slice('/build/'.length)):(url.pathname==='/'?'index.html':url.pathname.replace(/^\//,''));
     const target=path.resolve(staticRoot,requested); if(!target.startsWith(staticRoot+path.sep)&&target!==staticRoot) return send(res,403,{error:'Forbidden'});
     if(!fs.existsSync(target)||!fs.statSync(target).isFile()) return send(res,404,{error:'Not found'});
     const ext=path.extname(target); const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.wasm':'application/wasm','.zip':'application/zip','.svg':'image/svg+xml','.ttf':'font/ttf','.woff':'font/woff','.woff2':'font/woff2'}; res.writeHead(200,{'content-type':types[ext]||'application/octet-stream'}); fs.createReadStream(target).pipe(res);
