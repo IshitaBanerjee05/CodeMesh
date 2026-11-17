@@ -50,6 +50,11 @@ test('serves bundled Monaco editor, stylesheet and worker locally', async (t) =>
   assert.equal(ready, true, 'server should start');
 
   const page = await fetch(base).then((response) => response.text());
+  assert.match(page, /\/build\/app\.js/);
+  const rendererResponse = await fetch(`${base}/build/app.js`);
+  assert.equal(rendererResponse.status, 200);
+  assert.match(rendererResponse.headers.get('content-type'), /javascript/);
+  assert.match(await rendererResponse.text(), /createRoot/);
   assert.match(page, /\/monaco\/monaco-entry\.css/);
   assert.match(page, /worker-src 'self'/);
   assert.doesNotMatch(page, /script-src[^;]*'unsafe-eval'/);

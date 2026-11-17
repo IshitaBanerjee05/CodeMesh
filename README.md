@@ -1,6 +1,8 @@
-# CodeMesh — MVP v0.3 (Monaco IDE)
+# CodeMesh — MVP v0.4 (React + TypeScript migration in progress)
 
-CodeMesh is a local-first programming classroom prototype. v0.3 replaces the student code textarea with Monaco Editor while preserving the existing classroom server, workspace APIs, save flow and v0.2 desktop-native execution path.
+CodeMesh is a local-first programming classroom prototype. v0.3 replaced the student code textarea with Monaco Editor. v0.4 begins an incremental React + TypeScript renderer migration while preserving the existing classroom server, workspace APIs, save flow and desktop-native execution path.
+
+The renderer build uses React and TypeScript. The shared navigation/header shell is now a React component; teacher/student screen content remains behind a legacy compatibility adapter during the incremental migration. Shared classroom contracts and a typed HTTP client are in place.
 
 Monaco 0.57.0 is pinned as a runtime dependency and bundled locally with esbuild. The host serves its editor, language and worker assets from the ignored build directory; the app does not load Monaco from a CDN. `npm start`, `npm run desktop`, `npm test` and `npm run check` build those assets automatically. After dependencies have been installed, editing works without an internet connection.
 
@@ -89,8 +91,8 @@ The Electron desktop Run button does not use these assets.
 
 ## Known limitations / next work
 
-- The UI remains vanilla HTML/CSS/JavaScript; React + TypeScript migration is not yet complete.
-- Monaco uses a small ESM bundle while the rest of the renderer remains unbundled. The build is a stepping stone toward the planned v0.4 renderer migration.
+- The React + TypeScript migration is underway. Teacher and student screen content still uses the legacy renderer adapter and needs incremental component migration and feature-parity checks.
+- The remaining legacy screen renderer is bundled for local delivery; it has not yet been converted into typed React components.
 - Events use SSE rather than the originally proposed WebSocket gateway.
 - Browser Java/TeaVM runtime is not wired in this build.
 - TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers and 30-client load testing remain outstanding.

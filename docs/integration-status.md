@@ -1,4 +1,13 @@
-# CodeMesh integration status — v0.3
+# CodeMesh integration status — v0.4 migration in progress
+
+## v0.4 progress
+- React and TypeScript dependencies are pinned by the package lockfile.
+- The local build produces a React renderer bundle served by the existing Node host; no CDN is used.
+- The shared sidebar navigation and header/role switch are rendered by React. Existing screen markup is passed through a compatibility adapter while those screens are migrated.
+- Shared TypeScript contracts describe sessions, students, workspaces, exercises, submissions, classroom events, and native execution results.
+- A typed HTTP client is used by existing renderer API calls, and the desktop bridge has a narrow declared type.
+- Teacher/student screen content remains in the legacy adapter. Screen-by-screen React migration and feature-parity verification remain outstanding.
+- The existing Electron main process, preload bridge, classroom server, and native runner remain in place.
 
 ## Implemented
 - Teacher/student classroom flow, SQLite persistence and SSE updates carried forward from v0.1/v0.2.
