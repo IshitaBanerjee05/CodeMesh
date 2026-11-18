@@ -1,4 +1,10 @@
-# CodeMesh integration status — v0.7 security hardening in progress
+# CodeMesh integration status — v0.9 Windows packaging in progress
+
+## v0.9 packaging progress
+- Pinned `electron-builder` 26.18.0 and configured an x64 NSIS per-user installer with local renderer/Monaco build assets.
+- The Electron main process starts the classroom host through Electron's bundled Node utility process, avoiding a separate system Node.js requirement for the packaged desktop app.
+- Classroom SQLite data remains in the existing user-profile `~/.codemesh` directory, outside the install directory, to preserve continuity and avoid a risky database migration.
+- Installer build, clean-machine install/launch, upgrade, and uninstall checks remain outstanding. Python/JDK remain separate student-side prerequisites; project icon and code signing are not configured.
 
 ## v0.8 LAN/offline validation started
 - Added `docs/lan-validation.md` with router topology, adapter selection guidance, troubleshooting, and a results template.

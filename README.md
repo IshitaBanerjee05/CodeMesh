@@ -1,4 +1,4 @@
-# CodeMesh — MVP v0.7 (Security hardening in progress)
+# CodeMesh — MVP v0.9 (Windows packaging in progress)
 
 CodeMesh is a local-first programming classroom prototype. v0.3 replaced the student code textarea with Monaco Editor. v0.4 began an incremental React + TypeScript renderer migration; v0.5 strengthens the existing SSE classroom transport and restores authoritative state after temporary network loss.
 
@@ -43,8 +43,9 @@ The desktop Run button invokes local interpreters/compilers and displays stdout,
 
 ## Requirements
 
-- Node.js 22.13+ (the host uses Node's built-in `node:sqlite`).
-- For the desktop app: npm and Electron dependencies.
+- Node.js 22.13+ and npm are needed to run from source; the host uses Node's built-in `node:sqlite`.
+- The packaged Windows desktop app uses Electron's bundled Node runtime and does not require a separate Node.js installation.
+- For desktop development: npm and Electron dependencies.
 - For the editor: the pinned Monaco package installed by `npm install`.
 - For native Python: Python 3 installed and discoverable through PATH (Windows Python Launcher `py -3` is supported).
 - For native Java: a JDK installed with both `javac` and `java` on PATH.
@@ -68,6 +69,17 @@ npm run desktop
 Electron starts the local host server and opens the desktop interface. Use the role switch to select Teacher or Student. A student can enter the teacher's LAN host URL and join the session. Student workspaces use Monaco with Python/Java syntax highlighting based on file extension, local autosave, line numbers, indentation, bracket matching and automatic resize layout. On that student's Electron desktop app, the Run button continues to use that student's installed Python/JDK.
 
 The Electron desktop app also starts a local host service on each machine so the same UI can be served locally. For a student joining another teacher's host, use the teacher's displayed LAN address in the Join Classroom form.
+
+## Build the Windows installer
+
+On Windows, install the locked development dependencies and build the x64 NSIS installer:
+
+```bash
+npm install
+npm run dist:win
+```
+
+The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The v0.9 packaging workflow and clean-machine install/upgrade/uninstall behavior still need verification. The installer currently has no project icon or publisher signature.
 
 ## Test and inspect
 
