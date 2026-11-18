@@ -82,7 +82,12 @@ const port = await freePort();
 const base = `http://127.0.0.1:${port}`;
 const child = spawn(process.execPath, ['apps/desktop/src/main/server.mjs'], {
   cwd: root,
-  env: { ...process.env, CODEMESH_PORT: String(port), CODEMESH_DATA_DIR: dataDirectory },
+  env: {
+    ...process.env,
+    CODEMESH_PORT: String(port),
+    CODEMESH_BIND_ADDRESS: '127.0.0.1',
+    CODEMESH_DATA_DIR: dataDirectory
+  },
   stdio: 'ignore'
 });
 const readers = [];

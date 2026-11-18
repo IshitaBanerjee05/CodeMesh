@@ -58,10 +58,10 @@ student tokens, names, or student code in shared validation notes.
 ## Local software load simulation
 
 On 2026-11-18, `scripts/load-smoke.mjs` ran against a temporary local host
-using separate loopback source addresses. Each simulated client joined,
-opened an authenticated SSE stream, saved a workspace, and submitted it. All
-workspace updates and submissions succeeded; the host reported no SSE
-backpressure or slow-client disconnects.
+bound to loopback and using separate loopback source addresses. Each simulated
+client joined, opened an authenticated SSE stream, saved a workspace, and
+submitted it. All workspace updates and submissions succeeded; the host
+reported no SSE backpressure or slow-client disconnects.
 
 This measures one Windows host's local HTTP, SQLite, and SSE path. It does not
 include a router, Wi-Fi, separate computers, realistic editing intervals, or
@@ -69,10 +69,10 @@ WAN disconnection, so these figures do not establish classroom LAN capacity.
 
 | Simulated clients | Join p50 / p95 (ms) | Workspace + submit p50 / p95 (ms) | Total workload (ms) | Host RSS (bytes) | Events delivered |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 5 | 20.72 / 28.98 | 52.07 / 61.19 | 62.19 | 53,063,680 | 32 |
-| 10 | 30.51 / 51.80 | 83.59 / 109.67 | 111.02 | 54,169,600 | 62 |
-| 20 | 56.20 / 113.81 | 183.91 / 224.98 | 230.31 | 55,881,728 | 122 |
-| 30 | 79.11 / 159.88 | 241.72 / 319.04 | 329.14 | 56,643,584 | 182 |
+| 5 | 16.48 / 23.97 | 45.18 / 50.40 | 51.91 | 53,035,008 | 32 |
+| 10 | 31.80 / 52.20 | 76.58 / 110.75 | 112.09 | 54,226,944 | 62 |
+| 20 | 57.98 / 93.33 | 222.76 / 274.09 | 283.80 | 55,840,768 | 122 |
+| 30 | 94.70 / 168.35 | 202.57 / 264.33 | 273.94 | 56,442,880 | 182 |
 
 Reproduce a scenario from the repository root with, for example,
 `npm run load:smoke -- 30`. Supported counts are 5, 10, 20, and 30. The script
