@@ -16,10 +16,11 @@ let hostProcess;
 let windowRef;
 const root = path.resolve(__dirname, '../../../..');
 const serverPath = path.join(__dirname, 'server.mjs');
+const hostWorkingDirectory = app.isPackaged ? app.getPath('userData') : root;
 const port = Number(process.env.CODEMESH_PORT || 4173);
 function waitForHost(attempt=0){return new Promise((resolve,reject)=>{const req=http.get(`http://127.0.0.1:${port}/api/health`,res=>{res.resume();resolve()});req.on('error',()=>{if(attempt>50)return reject(new Error('CodeMesh host did not start'));setTimeout(()=>waitForHost(attempt+1).then(resolve,reject),200)});req.setTimeout(500,()=>req.destroy())})}
 async function createWindow(){
-  hostProcess=utilityProcess.fork(serverPath,[],{cwd:root,env:{...process.env,CODEMESH_PORT:String(port)},stdio:'inherit',serviceName:'CodeMesh Classroom Host'});
+  hostProcess=utilityProcess.fork(serverPath,[],{cwd:hostWorkingDirectory,env:{...process.env,CODEMESH_PORT:String(port)},stdio:'inherit',serviceName:'CodeMesh Classroom Host'});
   await waitForHost();
   windowRef=new BrowserWindow({width:1440,height:940,minWidth:980,minHeight:680,backgroundColor:'#0b1020',title:'CodeMesh',webPreferences:{preload:path.join(__dirname,'../preload/index.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   windowRef.webContents.setWindowOpenHandler(({url})=>{shell.openExternal(url);return {action:'deny'}});
