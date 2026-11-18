@@ -1,7 +1,9 @@
 {
   "name": "codemesh-classroom",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "private": true,
+  "productName": "CodeMesh",
+  "main": "apps/desktop/src/main/electron.cjs",
   "description": "Local-first programming classroom with native desktop execution",
   "type": "module",
   "engines": {
@@ -17,6 +19,7 @@
     "dev": "node apps/desktop/src/main/server.mjs",
     "predesktop": "npm run build",
     "desktop": "electron apps/desktop/src/main/electron.cjs",
+    "dist:win": "npm run build && electron-builder --win nsis --x64",
     "precheck": "npm run build",
     "check": "node --check apps/desktop/src/main/server.mjs && node --check apps/desktop/src/main/electron.cjs && node --check apps/desktop/src/main/native-runner.cjs && node --check apps/desktop/src/preload/index.cjs && node --check apps/desktop/src/renderer/app.js && node --check apps/desktop/src/renderer/monaco-editor.js && node --check apps/desktop/src/renderer/monaco-entry.js && node --check apps/desktop/src/renderer/monaco-worker.js && node --check apps/desktop/src/renderer/workers/python.worker.js && tsc --noEmit",
     "pretest": "npm run build",
@@ -26,6 +29,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "electron": "^36.0.0",
+    "electron-builder": "26.18.0",
     "esbuild": "0.27.7",
     "typescript": "^7.0.2"
   },
@@ -33,5 +37,37 @@
     "monaco-editor": "0.57.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
+  },
+  "build": {
+    "appId": "com.codemesh.classroom",
+    "productName": "CodeMesh",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "apps/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "CodeMesh-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CodeMesh",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
