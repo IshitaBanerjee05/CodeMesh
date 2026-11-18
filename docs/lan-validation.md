@@ -50,10 +50,33 @@ student tokens, names, or student code in shared validation notes.
 | Teacher and one student join, approval, workspace edit, run, and submission | Not run | Requires two physical devices on the same LAN |
 | LAN workflow with WAN/internet disconnected | Not run | Keep router/AP powered and LAN available |
 | Wi-Fi interruption and reconnect/state recovery | Not run | Record interruption length and recovered state |
-| 5 clients | Not run | Record CPU, memory, event latency, joins, submissions |
-| 10 clients | Not run | Same workload and measurements |
-| 20 clients | Not run | Same workload and measurements |
-| Approximately 30 clients | Not run | Do not claim capacity until repeatable |
+| 5 physical clients | Not run | A single-host software simulation is recorded below; it is not a LAN result |
+| 10 physical clients | Not run | Same workload and measurements on separate devices |
+| 20 physical clients | Not run | Same workload and measurements on separate devices |
+| Approximately 30 physical clients | Not run | Do not claim capacity until repeatable physical tests pass |
+
+## Local software load simulation
+
+On 2026-11-18, `scripts/load-smoke.mjs` ran against a temporary local host
+using separate loopback source addresses. Each simulated client joined,
+opened an authenticated SSE stream, saved a workspace, and submitted it. All
+workspace updates and submissions succeeded; the host reported no SSE
+backpressure or slow-client disconnects.
+
+This measures one Windows host's local HTTP, SQLite, and SSE path. It does not
+include a router, Wi-Fi, separate computers, realistic editing intervals, or
+WAN disconnection, so these figures do not establish classroom LAN capacity.
+
+| Simulated clients | Join p50 / p95 (ms) | Workspace + submit p50 / p95 (ms) | Total workload (ms) | Host RSS (bytes) | Events delivered |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 | 20.72 / 28.98 | 52.07 / 61.19 | 62.19 | 53,063,680 | 32 |
+| 10 | 30.51 / 51.80 | 83.59 / 109.67 | 111.02 | 54,169,600 | 62 |
+| 20 | 56.20 / 113.81 | 183.91 / 224.98 | 230.31 | 55,881,728 | 122 |
+| 30 | 79.11 / 159.88 | 241.72 / 319.04 | 329.14 | 56,643,584 | 182 |
+
+Reproduce a scenario from the repository root with, for example,
+`npm run load:smoke -- 30`. Supported counts are 5, 10, 20, and 30. The script
+creates a temporary database and removes it after the run.
 
 ## Current implementation and limits
 

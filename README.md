@@ -116,8 +116,8 @@ The Electron desktop Run button does not use these assets.
 - The remaining legacy screen renderer is bundled for local delivery; it has not yet been converted into typed React components.
 - SSE event history is not replayed; clients recover snapshots after reconnect. Two-device reconnect and LAN load testing remain outstanding.
 - Browser Java/TeaVM runtime is not wired in this build.
-- TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers and 30-client load testing remain outstanding.
-- The `1.0.0-rc.1` Windows installer has been built and launched in the current profile; clean-machine install, upgrade, uninstall, data retention, and offline startup still need verification.
+- TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers, and physical offline-LAN/reconnect/load testing remain outstanding. Local-only load simulation figures are recorded in [the LAN validation guide](docs/lan-validation.md); they do not establish device or router capacity.
+- The `1.0.0-rc.2` Windows installer has been built and launched in the current profile; clean-machine install, upgrade, uninstall, data retention, and offline startup still need verification.
 - Native Python/JDK installation checks happen at Run time; there is no guided installer yet.
 - Java support currently targets straightforward source files with a main class, not arbitrary Maven/Gradle projects, JNI, GUI apps or every JDK feature.
 

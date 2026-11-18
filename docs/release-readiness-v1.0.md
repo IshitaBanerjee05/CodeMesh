@@ -31,9 +31,9 @@ claim. Native student code runs with the student's OS account permissions.
 | Complete teacher/student workflow | Partial | Automated API integration flow passed; full desktop UI workflow still needs a dated run on named devices |
 | Offline LAN workflow | Not run | Router, WAN-disconnected, and device record |
 | Reconnect after Wi-Fi interruption | Not run | Interruption duration and recovered state |
-| Load measurements at 5, 10, 20, and approximately 30 clients | Not run | Client count, hardware, CPU/memory, latency, failures |
+| Load measurements at 5, 10, 20, and approximately 30 clients | Partial | Single-host loopback simulations recorded; physical multi-device LAN runs still need client count, hardware, CPU/memory, latency, and failure evidence |
 | Clean-machine Python and Java execution | Partial | Java smoke passed with JDK 23 on the development machine; Python is unavailable here; clean-machine checks outstanding |
-| Reproducible install, upgrade, uninstall, and data retention | Partial | `1.0.0-rc.1` installed/upgraded and launched in the current profile; clean-machine, uninstall and data-retention results outstanding |
+| Reproducible install, upgrade, uninstall, and data retention | Partial | `1.0.0-rc.2` installed/upgraded and launched in the current profile; clean-machine, uninstall and data-retention results outstanding |
 | Teacher and student setup guides | Drafted | Review steps against the final release candidate |
 | Architecture, data model, API, and security limits | Documented | Review current-source docs against final release candidate |
 | Multi-device demonstration | Not run | Demonstration checklist and recorded outcome |
@@ -42,17 +42,23 @@ claim. Native student code runs with the student's OS account permissions.
 
 ## Current evidence and known limits
 
-- The `1.0.0-rc.1` Windows x64 installer was built at
-  `release/CodeMesh-Setup-1.0.0-rc.1-x64.exe` (92,827,298 bytes), installed as
+- The `1.0.0-rc.2` Windows x64 installer was built at
+  `release/CodeMesh-Setup-1.0.0-rc.2-x64.exe`, installed as
   an upgrade in the current profile, and launched to the teacher dashboard.
   This is not a clean-machine or full workflow result.
-- On the `1.0.0-rc.1` source, `npm test` passed all 14 tests and `npm run check`
-  passed. Rerun both against the final release commit.
+- On the `1.0.0-rc.2` source, `npm test` passed all 14 tests and `npm run check`
+  passed. The health endpoint regression assertion checks the reported app
+  version against `package.json`. Rerun both against the final release commit.
 - The native Java runner compiled and ran a smoke program with the available
   JDK 23. No Python interpreter is discoverable in this profile, so Python
   execution could not be verified here.
+- The local single-host load simulation completed 5, 10, 20, and 30 simulated
+  clients with successful workspace updates/submissions and no SSE
+  backpressure or slow-client disconnects. Measurements and limits are in
+  `docs/lan-validation.md`; physical LAN capacity remains unverified.
 - `docs/lan-validation.md` records physical-device, WAN-disconnected,
-  interruption, and load scenarios as not run.
+  interruption, and physical load scenarios as not run; single-host loopback
+  load simulations are recorded separately.
 - The installer is unsigned, has no project icon, and package metadata has no
   publisher author. Clean-machine upgrade and uninstall behavior still need
   verification.
