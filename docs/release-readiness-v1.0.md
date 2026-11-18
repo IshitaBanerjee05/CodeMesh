@@ -27,13 +27,13 @@ claim. Native student code runs with the student's OS account permissions.
 | Gate | Status | Evidence required |
 | --- | --- | --- |
 | Freeze scope and triage release-blocking defects | In progress | Final scope decision and issue list |
-| Complete automated checks on the release candidate | Not rerun for v1.0 | Exact command output and commit hash |
+| Complete automated checks on the release candidate | Passed locally | `npm test` (14/14) and `npm run check` on the `1.0.0-rc.1` source |
 | Complete teacher/student workflow | Not run end to end | Dated workflow record on named devices |
 | Offline LAN workflow | Not run | Router, WAN-disconnected, and device record |
 | Reconnect after Wi-Fi interruption | Not run | Interruption duration and recovered state |
 | Load measurements at 5, 10, 20, and approximately 30 clients | Not run | Client count, hardware, CPU/memory, latency, failures |
-| Clean-machine Python and Java execution | Not run | OS, Python/JDK versions, sample results |
-| Reproducible install, upgrade, uninstall, and data retention | Partial | Current-profile v0.9 install/launch only; clean-machine results outstanding |
+| Clean-machine Python and Java execution | Partial | Java smoke passed with JDK 23 on the development machine; Python is unavailable here; clean-machine checks outstanding |
+| Reproducible install, upgrade, uninstall, and data retention | Partial | `1.0.0-rc.1` installed/upgraded and launched in the current profile; clean-machine, uninstall and data-retention results outstanding |
 | Teacher and student setup guides | Drafted | Review steps against the final release candidate |
 | Architecture, data model, API, and security limits | Documented | Review current-source docs against final release candidate |
 | Multi-device demonstration | Not run | Demonstration checklist and recorded outcome |
@@ -42,15 +42,20 @@ claim. Native student code runs with the student's OS account permissions.
 
 ## Current evidence and known limits
 
-- The v0.9 Windows x64 installer was installed/upgraded in the current Windows
-  profile and launched to the teacher dashboard. This is not a clean-machine
-  or full workflow result.
-- `docs/integration-status.md` records prior successful `npm run check` and
-  `npm test` results (14 tests). Rerun both against the final release commit.
+- The `1.0.0-rc.1` Windows x64 installer was built at
+  `release/CodeMesh-Setup-1.0.0-rc.1-x64.exe` (92,827,298 bytes), installed as
+  an upgrade in the current profile, and launched to the teacher dashboard.
+  This is not a clean-machine or full workflow result.
+- On the `1.0.0-rc.1` source, `npm test` passed all 14 tests and `npm run check`
+  passed. Rerun both against the final release commit.
+- The native Java runner compiled and ran a smoke program with the available
+  JDK 23. No Python interpreter is discoverable in this profile, so Python
+  execution could not be verified here.
 - `docs/lan-validation.md` records physical-device, WAN-disconnected,
   interruption, and load scenarios as not run.
-- The installer is unsigned and has no project icon. Clean-machine upgrade and
-  uninstall behavior still need verification.
+- The installer is unsigned, has no project icon, and package metadata has no
+  publisher author. Clean-machine upgrade and uninstall behavior still need
+  verification.
 - LAN traffic uses unencrypted HTTP. Native code execution is not sandboxed.
   Do not present CodeMesh as suitable for an untrusted network or high-stakes
   execution environment.

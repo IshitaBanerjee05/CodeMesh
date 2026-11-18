@@ -81,7 +81,7 @@ npm install
 npm run dist:win
 ```
 
-The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The v0.9 x64 installer has been built on the development machine; clean-machine install/upgrade/uninstall behavior still needs verification. Monaco's published ESM package omits 11 imported CSS files, so the build reports those omissions and bundles the CSS files that are present. The installer currently has no project icon or publisher signature.
+The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The `1.0.0-rc.1` x64 installer has been built, installed/upgraded in the current profile, and launched to the teacher dashboard. Clean-machine install/upgrade/uninstall, data-retention and offline-startup behavior still need verification. Monaco's published ESM package omits 11 imported CSS files, so the build reports those omissions and bundles the CSS files that are present. The installer currently has no project icon or publisher signature.
 
 ## Test and inspect
 
@@ -117,7 +117,7 @@ The Electron desktop Run button does not use these assets.
 - SSE event history is not replayed; clients recover snapshots after reconnect. Two-device reconnect and LAN load testing remain outstanding.
 - Browser Java/TeaVM runtime is not wired in this build.
 - TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers and 30-client load testing remain outstanding.
-- The Windows installer has been built; clean-machine install, upgrade, uninstall, and offline startup still need verification.
+- The `1.0.0-rc.1` Windows installer has been built and launched in the current profile; clean-machine install, upgrade, uninstall, data retention, and offline startup still need verification.
 - Native Python/JDK installation checks happen at Run time; there is no guided installer yet.
 - Java support currently targets straightforward source files with a main class, not arbitrary Maven/Gradle projects, JNI, GUI apps or every JDK feature.
 
