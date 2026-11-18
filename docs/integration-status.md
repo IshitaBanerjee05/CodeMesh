@@ -5,6 +5,7 @@
 - The Electron main process starts the classroom host through Electron's bundled Node utility process, avoiding a separate system Node.js requirement for the packaged desktop app.
 - Classroom SQLite data remains in the existing user-profile `~/.codemesh` directory, outside the install directory, to preserve continuity and avoid a risky database migration.
 - Installer build, clean-machine install/launch, upgrade, and uninstall checks remain outstanding. Python/JDK remain separate student-side prerequisites; project icon and code signing are not configured.
+- `npm run dist:win` built the React renderer but stopped in the existing Monaco bundling step: the pinned Monaco 0.57.0 ESM package has 12 unresolved CSS imports. No installer artifact was produced. Dependency resolution reported 16 npm advisories (2 low, 5 moderate, 8 high, 1 critical); no automatic audit fixes were applied.
 
 ## v0.8 LAN/offline validation started
 - Added `docs/lan-validation.md` with router topology, adapter selection guidance, troubleshooting, and a results template.

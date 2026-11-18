@@ -79,7 +79,7 @@ npm install
 npm run dist:win
 ```
 
-The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The v0.9 packaging workflow and clean-machine install/upgrade/uninstall behavior still need verification. The installer currently has no project icon or publisher signature.
+The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The v0.9 packaging workflow and clean-machine install/upgrade/uninstall behavior still need verification. The current build is blocked by missing CSS imports in the pinned Monaco 0.57.0 ESM package, so no installer has been produced. The installer currently has no project icon or publisher signature.
 
 ## Test and inspect
 
