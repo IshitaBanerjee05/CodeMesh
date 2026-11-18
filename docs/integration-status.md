@@ -1,5 +1,10 @@
 # CodeMesh integration status — v0.7 security hardening in progress
 
+## v0.8 LAN/offline validation started
+- Added `docs/lan-validation.md` with router topology, adapter selection guidance, troubleshooting, and a results template.
+- Physical two-device, offline-LAN, interruption/reconnect, and 5/10/20/approximately-30-client measurements have not been run; results remain explicitly unverified.
+- The existing host enumerates all non-loopback IPv4 adapters and displays them on the teacher dashboard. Students are given a host URL field and connection instructions.
+
 ## v0.7 progress
 - Request bodies are capped at 2 MB using both the declared content length and actual streamed bytes.
 - Oversized requests return HTTP 413; the reader stops retaining further chunks after the limit is crossed.

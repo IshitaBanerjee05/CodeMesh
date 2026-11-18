@@ -96,6 +96,8 @@ The Electron desktop Run button does not use these assets.
 
 ## Known limitations / next work
 
+- v0.8 LAN/offline validation is underway. See [the LAN validation guide](docs/lan-validation.md) for router setup, troubleshooting, and the outstanding physical-device/load test record.
+
 - The React + TypeScript migration is underway. Teacher and student screen content still uses the legacy renderer adapter and needs incremental component migration and feature-parity checks.
 - The remaining legacy screen renderer is bundled for local delivery; it has not yet been converted into typed React components.
 - SSE event history is not replayed; clients recover snapshots after reconnect. Two-device reconnect and LAN load testing remain outstanding.
