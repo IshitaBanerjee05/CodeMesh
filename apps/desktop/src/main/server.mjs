@@ -303,5 +303,11 @@ const heartbeatTimer = setInterval(() => {
     }
   }
 }, heartbeatMs);
-const port=Number(process.env.CODEMESH_PORT||4173); server.listen(port,'0.0.0.0',()=>{console.log(`CodeMesh host listening on http://localhost:${port}`); for(const a of networkAddresses()) console.log(`LAN: http://${a.address}:${port} (${a.interface})`);});
+const port=Number(process.env.CODEMESH_PORT||4173);
+const bindAddress=process.env.CODEMESH_BIND_ADDRESS||'0.0.0.0';
+server.listen(port,bindAddress,()=>{
+  console.log(`CodeMesh host listening on http://localhost:${port}`);
+  if(bindAddress==='0.0.0.0'||bindAddress==='::') for(const a of networkAddresses()) console.log(`LAN: http://${a.address}:${port} (${a.interface})`);
+  else if(!isLoopback(bindAddress)) console.log(`LAN: http://${bindAddress}:${port}`);
+});
 process.on('SIGINT',()=>{clearInterval(heartbeatTimer);server.close();db.close();process.exit(0);});

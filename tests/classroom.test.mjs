@@ -44,6 +44,7 @@ test('teacher admission, student workspace, lock and submission flow', async (t)
     env: {
       ...process.env,
       CODEMESH_PORT: String(port),
+      CODEMESH_BIND_ADDRESS: '127.0.0.1',
       CODEMESH_DATA_DIR: dataDirectory,
       CODEMESH_HEARTBEAT_MS: '30'
     },
