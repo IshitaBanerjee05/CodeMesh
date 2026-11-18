@@ -85,7 +85,7 @@ The configured output directory is `release/`. The installer is set up for a per
 
 ## Test and inspect
 
-The native runner was smoke-tested in the build environment with Python 3.13 and OpenJDK 21: both printed the expected CodeMesh greeting. This verifies the runner path, not the Electron GUI or your particular Windows installation.
+The previous native-runner smoke check used Python 3.13 and OpenJDK 21 in the build environment. For `1.0.0-rc.1`, the native Java runner also passed a smoke check with JDK 23 on this Windows profile. Python is not discoverable in this profile, so Python execution and clean-machine runtime support remain unverified here.
 
 ```bash
 npm test

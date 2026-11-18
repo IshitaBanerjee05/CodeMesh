@@ -28,7 +28,7 @@ claim. Native student code runs with the student's OS account permissions.
 | --- | --- | --- |
 | Freeze scope and triage release-blocking defects | In progress | Final scope decision and issue list |
 | Complete automated checks on the release candidate | Passed locally | `npm test` (14/14) and `npm run check` on the `1.0.0-rc.1` source |
-| Complete teacher/student workflow | Not run end to end | Dated workflow record on named devices |
+| Complete teacher/student workflow | Partial | Automated API integration flow passed; full desktop UI workflow still needs a dated run on named devices |
 | Offline LAN workflow | Not run | Router, WAN-disconnected, and device record |
 | Reconnect after Wi-Fi interruption | Not run | Interruption duration and recovered state |
 | Load measurements at 5, 10, 20, and approximately 30 clients | Not run | Client count, hardware, CPU/memory, latency, failures |
