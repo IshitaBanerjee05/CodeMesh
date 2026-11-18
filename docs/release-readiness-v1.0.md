@@ -34,10 +34,10 @@ claim. Native student code runs with the student's OS account permissions.
 | Load measurements at 5, 10, 20, and approximately 30 clients | Not run | Client count, hardware, CPU/memory, latency, failures |
 | Clean-machine Python and Java execution | Not run | OS, Python/JDK versions, sample results |
 | Reproducible install, upgrade, uninstall, and data retention | Partial | Current-profile v0.9 install/launch only; clean-machine results outstanding |
-| Teacher and student setup guides | In progress | Published guides reviewed against release candidate |
-| Architecture, data model, API, and security limits | Partial | Current-source docs reviewed and cross-linked |
+| Teacher and student setup guides | Drafted | Review steps against the final release candidate |
+| Architecture, data model, API, and security limits | Documented | Review current-source docs against final release candidate |
 | Multi-device demonstration | Not run | Demonstration checklist and recorded outcome |
-| Known issues and release checklist | In progress | Final checklist completed with evidence |
+| Known issues and release checklist | Drafted | Complete each gate with evidence and publish final known issues |
 | `v1.0.0` release tag | Not created | Create only after release gates are satisfied |
 
 ## Current evidence and known limits
