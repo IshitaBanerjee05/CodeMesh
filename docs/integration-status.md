@@ -4,8 +4,10 @@
 - Pinned `electron-builder` 26.18.0 and configured an x64 NSIS per-user installer with local renderer/Monaco build assets.
 - The Electron main process starts the classroom host through Electron's bundled Node utility process, avoiding a separate system Node.js requirement for the packaged desktop app.
 - Classroom SQLite data remains in the existing user-profile `~/.codemesh` directory, outside the install directory, to preserve continuity and avoid a risky database migration.
-- Installer build, clean-machine install/launch, upgrade, and uninstall checks remain outstanding. Python/JDK remain separate student-side prerequisites; project icon and code signing are not configured.
-- `npm run dist:win` built the React renderer but stopped in the existing Monaco bundling step: the pinned Monaco 0.57.0 ESM package has 12 unresolved CSS imports. No installer artifact was produced. Dependency resolution reported 16 npm advisories (2 low, 5 moderate, 8 high, 1 critical); no automatic audit fixes were applied.
+- `npm run dist:win` completed on Windows and produced `release/CodeMesh-Setup-0.9.0-x64.exe` (92,827,412 bytes), with the unpacked app and `app.asar` containing the host, renderer, Monaco JavaScript, and generated Monaco CSS assets.
+- A build plugin handles the published Monaco 0.57.0 ESM package's 11 missing imported CSS files by substituting empty stylesheet modules and retaining the available CSS; the installed dashboard launches, but editor visual behavior still needs verification.
+- The installer was installed/upgraded in the current Windows profile and the installed app launched successfully to the teacher dashboard. Clean-machine install/launch, upgrade, and uninstall checks remain outstanding. Python/JDK remain separate student-side prerequisites; project icon and code signing are not configured.
+- Dependency resolution reported 16 npm advisories (2 low, 5 moderate, 8 high, 1 critical); no automatic audit fixes were applied.
 
 ## v0.8 LAN/offline validation started
 - Added `docs/lan-validation.md` with router topology, adapter selection guidance, troubleshooting, and a results template.
@@ -48,7 +50,7 @@
 ## Implemented
 - Teacher/student classroom flow, SQLite persistence and SSE updates carried forward from v0.1/v0.2.
 - Electron-only native Python and Java execution through the existing narrow preload IPC bridge and native runner.
-- Monaco Editor 0.57.0 pinned as a runtime dependency and bundled locally with pinned esbuild 0.27.7.
+- Monaco 0.57.0 and React are build-time dependencies; their generated renderer, editor, language and worker bundles are packaged locally with pinned esbuild 0.27.7.
 - The host serves generated Monaco JavaScript, CSS and worker files from the ignored `dist/monaco` directory under `/monaco/`; runtime assets are same-origin and require no CDN.
 - Student workspace uses Monaco with Python/Java syntax modes selected from file extensions, line numbers, four-space indentation, word wrap, bracket matching and automatic layout.
 - Editor changes continue to update local drafts, autosave to the host and use the existing workspace API and native Run path.
