@@ -1,4 +1,4 @@
-# CodeMesh — v1.0.0-rc.1 release candidate
+# CodeMesh — v1.0.0-rc.3 release candidate
 
 CodeMesh is a local-first programming classroom prototype. v0.3 replaced the student code textarea with Monaco Editor. v0.4 began an incremental React + TypeScript renderer migration; v0.5 strengthens the existing SSE classroom transport and restores authoritative state after temporary network loss.
 
@@ -81,11 +81,11 @@ npm install
 npm run dist:win
 ```
 
-The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The `1.0.0-rc.1` x64 installer has been built, installed/upgraded in the current profile, and launched to the teacher dashboard. Clean-machine install/upgrade/uninstall, data-retention and offline-startup behavior still need verification. Monaco's published ESM package omits 11 imported CSS files, so the build reports those omissions and bundles the CSS files that are present. The installer currently has no project icon or publisher signature.
+The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The `1.0.0-rc.3` x64 installer has been built, installed/upgraded in the current profile, and launched to the teacher dashboard. Clean-machine install/upgrade/uninstall, data-retention and offline-startup behavior still need verification. Monaco's published ESM package omits 11 imported CSS files, so the build reports those omissions and bundles the CSS files that are present. The installer currently has no project icon or publisher signature.
 
 ## Test and inspect
 
-The previous native-runner smoke check used Python 3.13 and OpenJDK 21 in the build environment. For `1.0.0-rc.1`, the native Java runner also passed a smoke check with JDK 23 on this Windows profile. Python is not discoverable in this profile, so Python execution and clean-machine runtime support remain unverified here.
+The previous native-runner smoke check used Python 3.13 and OpenJDK 21 in the build environment. The native Java runner also passed a smoke check with JDK 23 on this Windows profile. Python is not discoverable in this profile, so Python execution and clean-machine runtime support remain unverified here.
 
 ```bash
 npm test
@@ -117,7 +117,7 @@ The Electron desktop Run button does not use these assets.
 - SSE event history is not replayed; clients recover snapshots after reconnect. Two-device reconnect and LAN load testing remain outstanding.
 - Browser Java/TeaVM runtime is not wired in this build.
 - TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers, and physical offline-LAN/reconnect/load testing remain outstanding. Local-only load simulation figures are recorded in [the LAN validation guide](docs/lan-validation.md); they do not establish device or router capacity.
-- The `1.0.0-rc.2` Windows installer has been built and launched in the current profile; clean-machine install, upgrade, uninstall, data retention, and offline startup still need verification.
+- The `1.0.0-rc.3` Windows installer has been built and launched in the current profile; clean-machine install, upgrade, uninstall, data retention, and offline startup still need verification.
 - Native Python/JDK installation checks happen at Run time; there is no guided installer yet.
 - Java support currently targets straightforward source files with a main class, not arbitrary Maven/Gradle projects, JNI, GUI apps or every JDK feature.
 
