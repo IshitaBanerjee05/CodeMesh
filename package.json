@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build:renderer": "esbuild apps/desktop/src/renderer/react-entry.tsx --bundle --outdir=dist/renderer --entry-names=app --format=esm --target=es2022 --loader:.ttf=file --external:/monaco/*",
-    "build:monaco": "esbuild apps/desktop/src/renderer/monaco-entry.js apps/desktop/src/renderer/monaco-worker.js --bundle --outdir=dist/monaco --entry-names=[name] --format=esm --target=es2022 --loader:.ttf=file --asset-names=assets/[name]-[hash]",
+    "build:monaco": "node scripts/build-monaco.mjs",
     "build": "npm run build:renderer && npm run build:monaco",
     "prestart": "npm run build",
     "start": "node apps/desktop/src/main/server.mjs",
@@ -31,12 +31,10 @@
     "electron": "^36.0.0",
     "electron-builder": "26.18.0",
     "esbuild": "0.27.7",
-    "typescript": "^7.0.2"
-  },
-  "dependencies": {
     "monaco-editor": "0.57.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "com.codemesh.classroom",

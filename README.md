@@ -9,7 +9,7 @@ The renderer build uses React and TypeScript. The shared navigation/header shell
 
 Classroom events use versioned, validated envelopes over SSE. Streams send heartbeats and authenticate student bearer tokens in the Authorization header. Clients reconnect with bounded exponential backoff and jitter, then fetch the teacher's current session state or the student's workspace before applying new events. Connection state is shown in the interface. `/api/health` reports current stream counts and cumulative event fan-out metrics. SSE remains in use; the metrics provide evidence for future transport decisions.
 
-Monaco 0.57.0 is pinned as a runtime dependency and bundled locally with esbuild. The host serves its editor, language and worker assets from the ignored build directory; the app does not load Monaco from a CDN. `npm start`, `npm run desktop`, `npm test` and `npm run check` build those assets automatically. After dependencies have been installed, editing works without an internet connection.
+Monaco 0.57.0, React, and esbuild are pinned as build-time dependencies. The build bundles the editor, language and worker assets locally; the app does not load Monaco from a CDN. `npm start`, `npm run desktop`, `npm test` and `npm run check` build those assets automatically. After dependencies have been installed, editing works without an internet connection.
 
 ## Execution modes (intentional architecture split)
 
@@ -79,7 +79,7 @@ npm install
 npm run dist:win
 ```
 
-The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The v0.9 packaging workflow and clean-machine install/upgrade/uninstall behavior still need verification. The current build is blocked by missing CSS imports in the pinned Monaco 0.57.0 ESM package, so no installer has been produced. The installer currently has no project icon or publisher signature.
+The configured output directory is `release/`. The installer is set up for a per-user install, and uninstall leaves classroom data in the user's `~/.codemesh` directory. The v0.9 x64 installer has been built on the development machine; clean-machine install/upgrade/uninstall behavior still needs verification. Monaco's published ESM package omits 11 imported CSS files, so the build reports those omissions and bundles the CSS files that are present. The installer currently has no project icon or publisher signature.
 
 ## Test and inspect
 
@@ -115,7 +115,7 @@ The Electron desktop Run button does not use these assets.
 - SSE event history is not replayed; clients recover snapshots after reconnect. Two-device reconnect and LAN load testing remain outstanding.
 - Browser Java/TeaVM runtime is not wired in this build.
 - TLS/certificate pairing, hardened LAN transport, OS-level sandboxing, signed installers and 30-client load testing remain outstanding.
-- Electron packaging/Windows installer has not yet been built or tested.
+- The Windows installer has been built; clean-machine install, upgrade, uninstall, and offline startup still need verification.
 - Native Python/JDK installation checks happen at Run time; there is no guided installer yet.
 - Java support currently targets straightforward source files with a main class, not arbitrary Maven/Gradle projects, JNI, GUI apps or every JDK feature.
 
