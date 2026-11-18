@@ -1,6 +1,8 @@
-# CodeMesh — MVP v0.9 (Windows packaging in progress)
+# CodeMesh — MVP v0.9 (v1.0 release preparation)
 
 CodeMesh is a local-first programming classroom prototype. v0.3 replaced the student code textarea with Monaco Editor. v0.4 began an incremental React + TypeScript renderer migration; v0.5 strengthens the existing SSE classroom transport and restores authoritative state after temporary network loss.
+
+The v1.0 release gates and current evidence are tracked in [the release readiness checklist](docs/release-readiness-v1.0.md). Teacher and student operating steps are in [the v1.0 user guide](docs/user-guide-v1.0.md). The current implementation is still a release candidate; physical LAN, offline, scale, and clean-machine acceptance checks are not complete.
 
 ## v0.7 progress
 Request bodies have a 2 MB hard limit. Oversized declared-length and chunked requests return HTTP 413 without retaining the full payload. Invalid join-code attempts are limited to 8 per IP per minute, and valid admission requests to 10 per IP per active session per minute. Rate-limit state is bounded and expired buckets are pruned.
