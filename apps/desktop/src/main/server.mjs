@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createEventEnvelope } from '../shared/realtime-protocol.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const APP_VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const WEB = path.join(ROOT, 'apps/desktop/src/renderer');
 const MONACO = path.join(ROOT, 'dist/monaco');
 const RENDERER_BUILD = path.join(ROOT, 'dist/renderer');
@@ -174,7 +175,7 @@ const server = http.createServer(async (req,res) => {
       if(url.pathname==='/api/health') {
         const streamClients=[...clients];
         const memory=process.memoryUsage();
-        return send(res,200,{ok:true,version:'0.7.0',runtime:{uptimeSeconds:Math.floor(process.uptime()),memoryBytes:{rss:memory.rss,heapUsed:memory.heapUsed},cpuMicroseconds:process.cpuUsage()},addresses:networkAddresses(),realtime:{sseClients:{teacher:streamClients.filter(c=>c.teacher).length,student:streamClients.filter(c=>!c.teacher).length},eventsPublished:eventMetrics.published,deliveries:eventMetrics.deliveries,backpressureCount:eventMetrics.backpressureCount,slowClientsDisconnected:eventMetrics.slowClientsDisconnected,bytesSent:eventMetrics.bytesSent,eventsByType:{...eventMetrics.byType}}});
+        return send(res,200,{ok:true,version:APP_VERSION,runtime:{uptimeSeconds:Math.floor(process.uptime()),memoryBytes:{rss:memory.rss,heapUsed:memory.heapUsed},cpuMicroseconds:process.cpuUsage()},addresses:networkAddresses(),realtime:{sseClients:{teacher:streamClients.filter(c=>c.teacher).length,student:streamClients.filter(c=>!c.teacher).length},eventsPublished:eventMetrics.published,deliveries:eventMetrics.deliveries,backpressureCount:eventMetrics.backpressureCount,slowClientsDisconnected:eventMetrics.slowClientsDisconnected,bytesSent:eventMetrics.bytesSent,eventsByType:{...eventMetrics.byType}}});
       }
       if(url.pathname==='/api/session' && req.method==='GET') { if(!localOnly(req,res)) return; return send(res,200,{session:getSession(),addresses:networkAddresses()}); }
       if(url.pathname==='/api/session' && req.method==='POST') { if(!localOnly(req,res)) return;

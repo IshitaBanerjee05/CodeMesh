@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+
+const appVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 async function freePort() {
   const server = createServer();
@@ -152,7 +154,7 @@ test('teacher admission, student workspace, lock and submission flow', async (t)
   assert.match(presenceFrame, /"connected":true/);
 
   const health = await fetch(`${base}/api/health`).then((response) => response.json());
-  assert.equal(health.version, '0.7.0');
+  assert.equal(health.version, appVersion);
   assert.equal(health.realtime.sseClients.student, 1);
   assert.ok(health.runtime.memoryBytes.rss > 0);
 
